@@ -26,9 +26,20 @@ export const getProperties = async (excludeKeys = []) => {
   const allListings = response.data || [];
 
   // const excludedTypes = ["Industrial", "Retail", "Vacant Land"];
+  const deduped = [];
+  const seen = new Set();
+  for (const listing of allListings) {
+    const key = String(listing.ListingKey);
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(listing);
+    }
+  }
+  console.log("Total records after deduplication:", deduped);
+
   const excludedSubTypes = ["Business", "Industrial", "Retail", "Vacant Land"];
 
-  return allListings
+  return deduped
     .filter((listing) => !excludedSubTypes.includes(listing.PropertySubType))
     .sort(
       (a, b) =>

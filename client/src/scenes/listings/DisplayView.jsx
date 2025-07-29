@@ -79,9 +79,6 @@ const DisplayView = () => {
   };
 
   useEffect(() => {
-    getProperties().then((data) => {
-      setProperties(data || []);
-    });
     fetchProperties();
   }, []);
 

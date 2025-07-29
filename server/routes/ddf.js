@@ -84,25 +84,30 @@ router.get("/properties", async (req, res) => {
       .filter((k) => k);
     const token = await getAccessToken();
 
-    const response = await axios.get(
-      "https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true",
-
-      {
+    const top = 100;
+    let skip = 0;
+    let allListings = [];
+    let totalCount = 0;
+    do {
+      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$skip=${skip}&$top=${top}`;
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
-    );
+      });
+      const batch = Array.isArray(response.data.value)
+        ? response.data.value
+        : [];
+      totalCount = response.data["@odata.count"] || totalCount;
+      allListings = allListings.concat(batch);
+      skip += top;
+    } while (allListings.length < totalCount);
 
-    const listings = Array.isArray(response.data.value)
-      ? response.data.value
-      : [];
-
-    const filtered = listings.filter(
+    const filtered = allListings.filter(
       (item) => !exclude.includes(String(item.ListingKey))
     );
 
-    const totalCount = response.data["@odata.count"];
+    // const totalCount = response.data["@odata.count"];
     console.log("Total records:", totalCount);
     res.json(filtered);
   } catch (error) {
