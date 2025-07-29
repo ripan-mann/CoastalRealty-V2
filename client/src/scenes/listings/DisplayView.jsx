@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Box,
   Grid,
@@ -18,7 +18,7 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import {
   getProperties,
   getMemberByAgentKey,
-  getOpenHouserByListingKey,
+  getOpenHouseByListingKey,
 } from "../../state/api";
 import realtyImage from "assets/c21-logo.png";
 import { QRCodeCanvas } from "qrcode.react";
@@ -60,14 +60,29 @@ const DisplayView = () => {
   const currentListing = properties[currentListingIndex];
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { setIsSidebarOpen, setIsNavbarVisible } = useOutletContext();
-  const [openHouseListingInfo, setOpenHouseListingInfo] = useState([]);
+  const [openHouseListingInfo, setOpenHouseListingInfo] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
+  const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
+
+  const fetchProperties = async () => {
+    const data = await getProperties(displayedListingKeysRef.current);
+    if (Array.isArray(data) && data.length > 0) {
+      setProperties(data);
+      setCurrentListingIndex(0);
+    } else {
+      displayedListingKeysRef.current = [];
+      const fresh = await getProperties([]);
+      setProperties(fresh || []);
+      setCurrentListingIndex(0);
+    }
+  };
 
   useEffect(() => {
     getProperties().then((data) => {
       setProperties(data || []);
     });
+    fetchProperties();
   }, []);
 
   useEffect(() => {
@@ -90,10 +105,10 @@ const DisplayView = () => {
     const fetchOpenHouseListing = async () => {
       if (!currentListing?.ListingKey) return;
       try {
-        const data = await getOpenHouserByListingKey(
+        const data = await getOpenHouseByListingKey(
           currentListing.ListingKey.toString()
         );
-        setOpenHouseListingInfo(data?.[0] || null);
+        setOpenHouseListingInfo(data);
       } catch (err) {
         console.error("Failed to fetch open house info", err);
         setOpenHouseListingInfo(null);
@@ -160,16 +175,30 @@ const DisplayView = () => {
   };
 
   useEffect(() => {
+    if (properties.length === 0) return;
     const interval = setInterval(() => {
       setFadeIn(false);
-      setTimeout(() => {
-        setCurrentListingIndex((prev) => (prev + 1) % properties.length);
+      setTimeout(async () => {
+        const currentKey =
+          properties[currentListingIndex]?.ListingKey?.toString();
+        if (
+          currentKey &&
+          !displayedListingKeysRef.current.includes(currentKey)
+        ) {
+          displayedListingKeysRef.current.push(currentKey);
+        }
+
+        if (currentListingIndex + 1 >= properties.length) {
+          await fetchProperties();
+        } else {
+          setCurrentListingIndex((prev) => prev + 1);
+        }
         setPhotoStartIndex(0);
         setFadeIn(true);
       }, 500);
     }, DISPLAY_DURATION);
     return () => clearInterval(interval);
-  }, [properties]);
+  }, [properties, currentListingIndex]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -411,37 +440,50 @@ const DisplayView = () => {
                 <Typography variant="body2" mt={2}>
                   (604) 599-4888
                 </Typography>
-                {openHouseListingInfo?.length > 0 && (
-                  <Box mt={4}>
-                    <Typography variant="h6" fontWeight="bold" gutterBottom>
-                      Open House
-                    </Typography>
-                    {openHouseListingInfo.map((entry) => (
-                      <Box key={entry.OpenHouseKey} mb={2}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <CalendarTodayIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {new Date(entry.OpenHouseDate).toLocaleDateString(
-                              "en-US",
-                              {
-                                weekday: "short",
-                                month: "short",
-                                day: "numeric",
-                              }
-                            )}
-                          </Typography>
-                        </Stack>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <AccessTimeIcon fontSize="small" />
-                          <Typography variant="body2">
-                            {formatTime(entry.OpenHouseStartTime)} -{" "}
-                            {formatTime(entry.OpenHouseEndTime)}
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
+                {Array.isArray(openHouseListingInfo) &&
+                  openHouseListingInfo.length > 0 && (
+                    <Box mt={4}>
+                      <Typography variant="h6" fontWeight="bold" gutterBottom>
+                        Open House
+                      </Typography>
+                      {openHouseListingInfo.map((entry) => (
+                        <Box key={entry.OpenHouseKey} mb={2}>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1}
+                          >
+                            <CalendarTodayIcon fontSize="small" />
+                            <Typography variant="body2">
+                              {new Date(entry.OpenHouseDate).toLocaleDateString(
+                                "en-US",
+                                {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              )}
+                            </Typography>
+                          </Stack>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={1}
+                          >
+                            <AccessTimeIcon fontSize="small" />
+                            <Typography variant="body2">
+                              {formatTime(entry.OpenHouseStartTime)} -{" "}
+                              {formatTime(entry.OpenHouseEndTime)}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                {openHouseListingInfo &&
+                  !Array.isArray(openHouseListingInfo) && (
+                    <Typography mt={4}>{openHouseListingInfo}</Typography>
+                  )}
                 <Paper
                   elevation={3}
                   sx={{

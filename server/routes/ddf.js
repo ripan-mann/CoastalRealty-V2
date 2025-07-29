@@ -78,13 +78,14 @@ router.get("/openh", async (req, res) => {
 
 router.get("/properties", async (req, res) => {
   try {
+    const exclude = String(req.query.exclude || "")
+      .split(",")
+      .map((k) => k.trim())
+      .filter((k) => k);
     const token = await getAccessToken();
 
     const response = await axios.get(
       "https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true",
-      // "StandardStatus": "Sold",
-      // "AvailabilityDate": "2019-08-24T14:15:22Z",
-      // "OriginalEntryTimestamp": null,
 
       {
         headers: {
@@ -92,9 +93,18 @@ router.get("/properties", async (req, res) => {
         },
       }
     );
+
+    const listings = Array.isArray(response.data.value)
+      ? response.data.value
+      : [];
+
+    const filtered = listings.filter(
+      (item) => !exclude.includes(String(item.ListingKey))
+    );
+
     const totalCount = response.data["@odata.count"];
     console.log("Total records:", totalCount);
-    res.json(response.data.value); // Return only listing array
+    res.json(filtered);
   } catch (error) {
     console.error("DDF Fetch Error:", error.response?.data || error.message);
     res.status(500).json({ error: "Failed to fetch properties from DDF®" });

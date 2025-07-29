@@ -17,8 +17,12 @@ export const api = createApi({
 
 // export const { useGetUserQuery } = api;
 
-export const getProperties = async () => {
-  const response = await axios.get("/api/ddf/properties");
+export const getProperties = async (excludeKeys = []) => {
+  const query =
+    Array.isArray(excludeKeys) && excludeKeys.length > 0
+      ? `?exclude=${excludeKeys.join(",")}`
+      : "";
+  const response = await axios.get(`/api/ddf/properties${query}`);
   const allListings = response.data || [];
 
   // const excludedTypes = ["Industrial", "Retail", "Vacant Land"];
@@ -41,10 +45,11 @@ export const getMemberByAgentKey = async (agentKey) => {
     throw error;
   }
 };
-export const getOpenHouserByListingKey = async (listingKey) => {
+export const getOpenHouseByListingKey = async (listingKey) => {
   try {
-    const response = await axios.get(`/api/ddf//openh//${listingKey}`);
-    return response.data;
+    const response = await axios.get(`/api/ddf/openh/${listingKey}`);
+    const data = response.data || [];
+    return data.length > 0 ? data : "no open house available";
   } catch (error) {
     console.error("Error fetching Open. House Listing:", error);
     throw error;
