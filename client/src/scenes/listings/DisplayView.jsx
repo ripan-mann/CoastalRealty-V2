@@ -136,10 +136,6 @@ const DisplayView = () => {
     fetchWeather();
   }, [currentListing?.City]);
 
-  useEffect(() => {
-    console.log("Weather Key:", process.env.REACT_APP_WEATHER_API_KEY);
-  }, []);
-
   const toggleFullscreen = () => {
     const element = document.documentElement;
 
