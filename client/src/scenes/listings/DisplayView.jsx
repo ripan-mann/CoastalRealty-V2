@@ -105,7 +105,6 @@ const DisplayView = () => {
   useEffect(() => {
     const fetchWeather = async () => {
       try {
-        // const apiKey = "cdfbccd6e7cd3b4219520fa7df534c7f";
         const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
         const currentListingCity = currentListing.City || "Vancouver";
 
