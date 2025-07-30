@@ -104,7 +104,9 @@ router.get("/properties", async (req, res) => {
     } while (allListings.length < totalCount);
 
     const filtered = allListings.filter(
-      (item) => !exclude.includes(String(item.ListingKey))
+      (item) =>
+        !exclude.includes(String(item.ListingKey)) &&
+        Number(item.PhotosCount ?? 0) >= 4
     );
 
     // const totalCount = response.data["@odata.count"];

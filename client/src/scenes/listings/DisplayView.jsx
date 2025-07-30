@@ -24,7 +24,7 @@ import realtyImage from "assets/c21-logo.png";
 import { QRCodeCanvas } from "qrcode.react";
 import { useOutletContext } from "react-router-dom";
 
-const DISPLAY_DURATION = 6000; // 60 sec
+// const DISPLAY_DURATION = 6000; // 60 sec
 const IMAGE_ROTATE_INTERVAL = 10000; // 10 sec
 
 const formatTime = (timeString) => {
@@ -55,7 +55,9 @@ const DisplayView = () => {
   const [agentInfo, setAgentInfo] = useState(null);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
   const [currentPhotoSet, setCurrentPhotoSet] = useState([]);
-  const [photoStartIndex, setPhotoStartIndex] = useState(0);
+  // const [photoStartIndex, setPhotoStartIndex] = useState(0);
+  const [currentPhotoSetIndex, setCurrentPhotoSetIndex] = useState(0);
+  const [totalPhotoSets, setTotalPhotoSets] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
   const currentListing = properties[currentListingIndex];
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -172,8 +174,19 @@ const DisplayView = () => {
   };
 
   useEffect(() => {
-    if (properties.length === 0) return;
-    const interval = setInterval(() => {
+    if (!currentListing) return;
+    const totalPhotos = currentListing.Media?.length || 0;
+    const remainder = totalPhotos % 6;
+    let sets = Math.floor(totalPhotos / 6);
+    if (remainder >= 4) sets += 1;
+    setTotalPhotoSets(sets);
+    setCurrentPhotoSetIndex(0);
+  }, [currentListing]);
+
+  // Rotate through photo sets and move to the next listing when finished
+  useEffect(() => {
+    if (!currentListing) return;
+    if (totalPhotoSets === 0) {
       setFadeIn(false);
       setTimeout(async () => {
         const currentKey =
@@ -190,34 +203,53 @@ const DisplayView = () => {
         } else {
           setCurrentListingIndex((prev) => prev + 1);
         }
-        setPhotoStartIndex(0);
+        setCurrentPhotoSetIndex(0);
         setFadeIn(true);
       }, 500);
-    }, DISPLAY_DURATION);
-    return () => clearInterval(interval);
-  }, [properties, currentListingIndex]);
+      return;
+    }
 
-  useEffect(() => {
     const interval = setInterval(() => {
-      if (currentListing?.Media?.length > 6) {
-        setPhotoStartIndex((prev) => {
-          const maxIndex = currentListing.Media.length;
-          return prev + 6 >= maxIndex ? 0 : prev + 6;
-        });
+      if (currentPhotoSetIndex + 1 >= totalPhotoSets) {
+        setFadeIn(false);
+        setTimeout(async () => {
+          const currentKey =
+            properties[currentListingIndex]?.ListingKey?.toString();
+          if (
+            currentKey &&
+            !displayedListingKeysRef.current.includes(currentKey)
+          ) {
+            displayedListingKeysRef.current.push(currentKey);
+          }
+
+          if (currentListingIndex + 1 >= properties.length) {
+            await fetchProperties();
+          } else {
+            setCurrentListingIndex((prev) => prev + 1);
+          }
+          setCurrentPhotoSetIndex(0);
+          setFadeIn(true);
+        }, 500);
+      } else {
+        setCurrentPhotoSetIndex((prev) => prev + 1);
       }
     }, IMAGE_ROTATE_INTERVAL);
     return () => clearInterval(interval);
-  }, [currentListing]);
+  }, [
+    currentPhotoSetIndex,
+    totalPhotoSets,
+    currentListing,
+    properties,
+    currentListingIndex,
+  ]);
 
   useEffect(() => {
     if (currentListing) {
-      const photos = currentListing.Media?.slice(
-        photoStartIndex,
-        photoStartIndex + 6
-      );
+      const startIndex = currentPhotoSetIndex * 6;
+      const photos = currentListing.Media?.slice(startIndex, startIndex + 6);
       setCurrentPhotoSet(photos);
     }
-  }, [photoStartIndex, currentListing]);
+  }, [currentPhotoSetIndex, currentListing]);
 
   if (!currentListing) return null;
 

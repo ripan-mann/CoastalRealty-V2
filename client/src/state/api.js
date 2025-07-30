@@ -41,6 +41,7 @@ export const getProperties = async (excludeKeys = []) => {
 
   return deduped
     .filter((listing) => !excludedSubTypes.includes(listing.PropertySubType))
+    .filter((listing) => Number(listing.PhotosCount ?? 0) >= 4)
     .sort(
       (a, b) =>
         new Date(b.OriginalEntryTimestamp) - new Date(a.OriginalEntryTimestamp)
