@@ -35,7 +35,6 @@ export const getProperties = async (excludeKeys = []) => {
       deduped.push(listing);
     }
   }
-  console.log("Total records after deduplication:", deduped);
 
   const excludedSubTypes = ["Business", "Industrial", "Retail", "Vacant Land"];
 

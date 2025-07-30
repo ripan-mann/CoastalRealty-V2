@@ -227,10 +227,10 @@ const DisplayView = () => {
         <Box
           sx={{
             // p: 2,
-            backgroundColor: "#fff",
             display: "flex",
             flexDirection: "column",
             height: "100vh",
+            boxSizing: "border-box",
             // width: "100vw",
             overflow: "hidden",
             pt: isFullscreen ? 10 : 0,
@@ -241,10 +241,11 @@ const DisplayView = () => {
             sx={{
               flexDirection: "column",
               height: "100%",
+              gap: 2,
             }}
           >
             {/* Row 1: Agent and Photos */}
-            <Grid item sx={{ flexGrow: 1, overflow: "hidden" }}>
+            <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
               <Grid
                 container
                 sx={{
@@ -256,8 +257,8 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "20%",
-                    maxWidth: "20%",
+                    minWidth: "30%",
+                    maxWidth: "30%",
                   }}
                 >
                   <Paper
@@ -384,8 +385,8 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "65%",
-                    maxWidth: "65%",
+                    minWidth: "70%",
+                    maxWidth: "70%",
                     height: "100%",
                     overflow: "hidden",
                   }}
@@ -397,6 +398,7 @@ const DisplayView = () => {
                       height: "100%",
                       display: "flex",
                       flexWrap: "wrap",
+                      minHeight: 0,
                     }}
                   >
                     {currentPhotoSet?.slice(0, 6).map((media, index) => (
@@ -438,7 +440,7 @@ const DisplayView = () => {
             </Grid>
 
             {/* Row 2: Logo, Weather, News and Mortgage */}
-            <Grid item sx={{ width: "100%", mt: 2 }}>
+            <Grid item sx={{ width: "100%" }}>
               <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
                 <Box sx={{ textAlign: "center" }}>
                   <img
