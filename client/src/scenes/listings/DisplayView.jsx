@@ -173,6 +173,37 @@ const DisplayView = () => {
     setIsFullscreen(!isFullscreen);
   };
 
+  // Remove a photo if the URL fails to load
+  const handleImageError = (index) => {
+    if (!currentListing) return;
+
+    const globalIndex = currentPhotoSetIndex * 6 + index;
+
+    setProperties((prev) => {
+      const updated = [...prev];
+      const listing = { ...updated[currentListingIndex] };
+      if (Array.isArray(listing.Media)) {
+        listing.Media = listing.Media.filter((_, i) => i !== globalIndex);
+      }
+      updated[currentListingIndex] = listing;
+
+      const count = listing.Media?.length || 0;
+      const rem = count % 6;
+      let sets = Math.floor(count / 6);
+      if (rem >= 4) sets += 1;
+      setTotalPhotoSets(sets);
+      if (currentPhotoSetIndex >= sets) {
+        setCurrentPhotoSetIndex(sets > 0 ? sets - 1 : 0);
+      }
+
+      return updated;
+    });
+
+    // Remove from the current photo set so it disappears immediately
+    setCurrentPhotoSet((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Determine how many photo sets should be shown for the current listing
   useEffect(() => {
     if (!currentListing) return;
     const totalPhotos = currentListing.Media?.length || 0;
@@ -270,328 +301,301 @@ const DisplayView = () => {
             pt: isFullscreen ? 10 : 0,
           }}
         >
-          <Grid
-            container
-            // spacing={2}
-            sx={{
-              display: "flex",
-              flexWrap: "nowrap", // prevent row wrapping
-              height: "100%",
-            }}
-          >
-            {/* Column 1: Agent Info, Property Info, QR Code */}
-            <Grid
-              item
-              sx={{
-                minWidth: "20%",
-                maxWidth: "20%",
-              }}
-            >
-              <Paper
-                sx={{
-                  p: 2,
-                  mb: 2,
-                  backgroundColor: "#fff",
-                  color: "#000",
-                  boxShadow: 0,
-                }}
-              >
-                <Avatar
-                  alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
-                  src={
-                    agentInfo?.Media?.[0]?.MediaURL ||
-                    "/images/default-agent.png"
-                  }
-                  sx={{ width: 72, height: 72, mb: 1 }}
-                />
-                <Typography fontWeight="bold">
-                  {`${agentInfo?.MemberFirstName || ""} ${
-                    agentInfo?.MemberLastName || ""
-                  }`}
-                </Typography>
-                <Typography variant="body2">
-                  {agentInfo?.JobTitle || "Real Estate Agent"}
-                </Typography>
-                <Typography variant="body2">
-                  {agentInfo?.MemberOfficePhone || "Phone not available"}
-                </Typography>
-                {agentInfo?.MemberSocialMedia?.[0]?.SocialMediaUrlOrId && (
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 1, wordBreak: "break-word" }}
-                  >
-                    <a
-                      href={agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ textDecoration: "none", color: "#1976d2" }}
-                    >
-                      {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
-                    </a>
-                  </Typography>
-                )}
-              </Paper>
-              <Paper
-                sx={{
-                  p: 2,
-                  backgroundColor: "#fff",
-                  color: "#000",
-                  boxShadow: 0,
-                }}
-              >
-                <Typography fontWeight="bold" gutterBottom>
-                  {`${currentListing.StreetNumber || ""} ${
-                    currentListing.StreetName || ""
-                  } ${currentListing.StreetSuffix || ""}
-                  `}
-                </Typography>
-                <Typography variant="body2">
-                  {`${currentListing.City || ""}, ${
-                    currentListing.StateOrProvince || ""
-                  } ${currentListing.PostalCode || ""}`}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Price: ${currentListing.ListPrice?.toLocaleString() || "N/A"}
-                </Typography>
-                <ul style={{ paddingLeft: "16px", margin: 0 }}>
-                  <li>{currentListing.BedroomsTotal || 0} Bedrooms</li>
-                  <li>{currentListing.BathroomsTotalInteger || 0} Bathrooms</li>
-                  <li>{currentListing.LivingArea || "N/A"} Sq. Ft.</li>
-                  {currentListing.YearBuilt && (
-                    <li>Built in {currentListing.YearBuilt}</li>
-                  )}
-                  {currentListing.LotSizeDimensions && (
-                    <li>
-                      Lot Size: {currentListing.LotSizeDimensions}{" "}
-                      {currentListing.LotSizeUnits || ""}
-                    </li>
-                  )}
-                  {currentListing.StructureType?.[0] && (
-                    <li>Type: {currentListing.StructureType[0]}</li>
-                  )}
-                  {currentListing.ArchitecturalStyle?.[0] && (
-                    <li>Style: {currentListing.ArchitecturalStyle[0]}</li>
-                  )}
-                  {currentListing.ParkingFeatures?.length > 0 && (
-                    <li>
-                      Parking: {currentListing.ParkingFeatures.join(", ")}
-                    </li>
-                  )}
-                </ul>
-                {/* Optional QR Code */}
-                <QRCodeCanvas
-                  value={`https://${currentListing.ListingURL}`}
-                  size={150}
-                  style={{
-                    marginTop: "3rem",
-                    backgroundColor: theme.palette.background.primary,
-                  }}
-                />
-
-                <Typography variant="caption" display="block" mt={4}>
-                  {new Date().toLocaleDateString("en-CA", {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </Typography>
-
-                <Typography variant="caption">
-                  {new Date().toLocaleTimeString()}
-                </Typography>
-              </Paper>
-            </Grid>
-
-            {/* Column 2: Photo Grid */}
-            <Grid
-              item
-              sx={{
-                minWidth: "65%",
-                maxWidth: "65%",
-                height: "90%",
-                overflow: "hidden",
-              }}
-            >
-              <Grid
-                container
-                spacing={0}
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexWrap: "wrap",
-                }}
-              >
-                {currentPhotoSet?.slice(0, 6).map((media, index) => (
-                  <Grid
-                    item
-                    key={index}
-                    xs={6}
-                    sx={{
-                      width: "50%",
-                      height: "calc(100% / 3)", // Each row gets 1/3 height
-                      p: 0.5,
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: "100%",
-                        height: "100%",
-                        overflow: "hidden",
-                        borderRadius: 1,
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={media.MediaURL}
-                        alt={`Property ${index + 1}`}
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </Grid>
-
-            {/* Column 3: Placeholder for future info */}
-            <Grid item sx={{ minWidth: "15%", maxWidth: "15%" }}>
-              <Box sx={{ textAlign: "center", color: "#000", px: 1 }}>
-                <img
-                  src={realtyImage}
-                  alt="Century 21 Logo"
-                  style={{ width: "100%", maxHeight: 100 }}
-                />
-                <Typography mt={2}>Coastal Realty Ltd</Typography>
-                <Typography variant="body2" mt={2}>
-                  (604) 599-4888
-                </Typography>
-                {Array.isArray(openHouseListingInfo) &&
-                  openHouseListingInfo.length > 0 && (
-                    <Box mt={4}>
-                      <Typography variant="h6" fontWeight="bold" gutterBottom>
-                        Open House
-                      </Typography>
-                      {openHouseListingInfo.map((entry) => (
-                        <Box key={entry.OpenHouseKey} mb={2}>
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            spacing={1}
-                          >
-                            <CalendarTodayIcon fontSize="small" />
-                            <Typography variant="body2">
-                              {new Date(entry.OpenHouseDate).toLocaleDateString(
-                                "en-US",
-                                {
-                                  weekday: "short",
-                                  month: "short",
-                                  day: "numeric",
-                                }
-                              )}
-                            </Typography>
-                          </Stack>
-                          <Stack
-                            direction="row"
-                            alignItems="center"
-                            spacing={1}
-                          >
-                            <AccessTimeIcon fontSize="small" />
-                            <Typography variant="body2">
-                              {formatTime(entry.OpenHouseStartTime)} -{" "}
-                              {formatTime(entry.OpenHouseEndTime)}
-                            </Typography>
-                          </Stack>
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                {openHouseListingInfo &&
-                  !Array.isArray(openHouseListingInfo) && (
-                    <Typography mt={4}>{openHouseListingInfo}</Typography>
-                  )}
-                <Paper
-                  elevation={3}
+          <Grid container direction="column" sx={{ height: "100%" }}>
+            <Grid item sx={{ flexGrow: 1 }}>
+              <Grid container sx={{ height: "100%" }}>
+                {/* Column 1: Agent Info, Property Info, QR Code */}
+                <Grid
+                  item
                   sx={{
-                    mt: 4,
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor:
-                      theme.palette.mode === "dark"
-                        ? theme.palette.background.alt
-                        : theme.palette.background.default,
-                    color: theme.palette.text.primary,
-                    textAlign: "center",
+                    minWidth: "20%",
+                    maxWidth: "20%",
                   }}
                 >
-                  <Typography
-                    variant="h6"
-                    fontWeight="bold"
-                    sx={{
-                      color: theme.palette.secondary.main,
-                      mb: 1,
-                    }}
-                  >
-                    Mortgage Estimate
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    fontWeight="bold"
-                    sx={{ color: theme.palette.secondary[200] }}
-                  >
-                    ${monthlyMortgage}/month
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      mt: 1,
-                      display: "block",
-                      color: theme.palette.text.secondary,
-                    }}
-                  >
-                    Based on 20% down, 4.50% interest,
-                    <br />
-                    25-year amortization
-                  </Typography>
-                </Paper>
-                {weatherData && (
                   <Paper
                     sx={{
-                      mt: 4,
                       p: 2,
-                      borderRadius: 2,
-                      textAlign: "center",
-                      backgroundColor:
-                        theme.palette.mode === "dark"
-                          ? theme.palette.background.alt
-                          : theme.palette.background.default,
-                      color: theme.palette.text.primary,
+                      mb: 2,
+                      backgroundColor: "#fff",
+                      color: "#000",
+                      boxShadow: 0,
                     }}
                   >
-                    <Typography
-                      variant="h6"
-                      fontWeight="bold"
-                      sx={{ color: theme.palette.secondary.main, mb: 1 }}
-                    >
-                      Current Weather
-                    </Typography>
-                    <img
-                      src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                      alt={weatherData.desc}
-                      style={{ width: 50, height: 50 }}
+                    <Avatar
+                      alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
+                      src={
+                        agentInfo?.Media?.[0]?.MediaURL ||
+                        "/images/default-agent.png"
+                      }
+                      sx={{ width: 72, height: 72, mb: 1 }}
                     />
-                    <Typography variant="h5" fontWeight="bold">
-                      {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                    <Typography fontWeight="bold">
+                      {`${agentInfo?.MemberFirstName || ""} ${
+                        agentInfo?.MemberLastName || ""
+                      }`}
                     </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {weatherData.city}
+                    <Typography variant="body2">
+                      {agentInfo?.JobTitle || "Real Estate Agent"}
+                    </Typography>
+                    <Typography variant="body2">
+                      {agentInfo?.MemberOfficePhone || "Phone not available"}
+                    </Typography>
+                    {agentInfo?.MemberSocialMedia?.[0]?.SocialMediaUrlOrId && (
+                      <Typography
+                        variant="body2"
+                        sx={{ mt: 1, wordBreak: "break-word" }}
+                      >
+                        <a
+                          href={
+                            agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: "none", color: "#1976d2" }}
+                        >
+                          {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
+                        </a>
+                      </Typography>
+                    )}
+                  </Paper>
+                  <Paper
+                    sx={{
+                      p: 2,
+                      backgroundColor: "#fff",
+                      color: "#000",
+                      boxShadow: 0,
+                    }}
+                  >
+                    <Typography fontWeight="bold" gutterBottom>
+                      {`${currentListing.StreetNumber || ""} ${
+                        currentListing.StreetName || ""
+                      } ${currentListing.StreetSuffix || ""}
+                  `}
+                    </Typography>
+                    <Typography variant="body2">
+                      {`${currentListing.City || ""}, ${
+                        currentListing.StateOrProvince || ""
+                      } ${currentListing.PostalCode || ""}`}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Price: $
+                      {currentListing.ListPrice?.toLocaleString() || "N/A"}
+                    </Typography>
+                    <ul style={{ paddingLeft: "16px", margin: 0 }}>
+                      <li>{currentListing.BedroomsTotal || 0} Bedrooms</li>
+                      <li>
+                        {currentListing.BathroomsTotalInteger || 0} Bathrooms
+                      </li>
+                      <li>{currentListing.LivingArea || "N/A"} Sq. Ft.</li>
+                      {currentListing.YearBuilt && (
+                        <li>Built in {currentListing.YearBuilt}</li>
+                      )}
+                      {currentListing.LotSizeDimensions && (
+                        <li>
+                          Lot Size: {currentListing.LotSizeDimensions}{" "}
+                          {currentListing.LotSizeUnits || ""}
+                        </li>
+                      )}
+                      {currentListing.StructureType?.[0] && (
+                        <li>Type: {currentListing.StructureType[0]}</li>
+                      )}
+                      {currentListing.ArchitecturalStyle?.[0] && (
+                        <li>Style: {currentListing.ArchitecturalStyle[0]}</li>
+                      )}
+                      {currentListing.ParkingFeatures?.length > 0 && (
+                        <li>
+                          Parking: {currentListing.ParkingFeatures.join(", ")}
+                        </li>
+                      )}
+                    </ul>
+                    {/* Optional QR Code */}
+                    <QRCodeCanvas
+                      value={`https://${currentListing.ListingURL}`}
+                      size={150}
+                      style={{
+                        marginTop: "3rem",
+                        backgroundColor: theme.palette.background.primary,
+                      }}
+                    />
+
+                    <Typography variant="caption" display="block" mt={4}>
+                      {new Date().toLocaleDateString("en-CA", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </Typography>
+
+                    <Typography variant="caption">
+                      {new Date().toLocaleTimeString()}
                     </Typography>
                   </Paper>
-                )}
-              </Box>
+                </Grid>
+
+                {/* Column 2: Photo Grid */}
+                <Grid
+                  item
+                  sx={{
+                    minWidth: "65%",
+                    maxWidth: "65%",
+                    height: "90%",
+                    overflow: "hidden",
+                  }}
+                >
+                  <Grid
+                    container
+                    spacing={0}
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {currentPhotoSet?.slice(0, 6).map((media, index) => (
+                      <Grid
+                        item
+                        key={index}
+                        xs={6}
+                        sx={{
+                          width: "50%",
+                          height: "calc(100% / 3)", // Each row gets 1/3 height
+                          p: 0.5,
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            overflow: "hidden",
+                            borderRadius: 1,
+                          }}
+                        >
+                          <Box
+                            component="img"
+                            src={media.MediaURL}
+                            alt={`Property ${index + 1}`}
+                            onError={() => handleImageError(index)}
+                            sx={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Grid item sx={{ width: "100%", mt: 2 }}>
+                <Grid container alignItems="flex-start">
+                  <Grid item sx={{ width: "15%", textAlign: "center", px: 1 }}>
+                    <img
+                      src={realtyImage}
+                      alt="Century 21 Logo"
+                      style={{ width: "100%", maxHeight: 100 }}
+                    />
+                    <Typography mt={2}>Coastal Realty Ltd</Typography>
+                    <Typography variant="body2" mt={2}>
+                      (604) 599-4888
+                    </Typography>
+                  </Grid>
+                  {weatherData && (
+                    <Grid item sx={{ width: "15%", px: 1 }}>
+                      <Paper
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          textAlign: "center",
+                          backgroundColor:
+                            theme.palette.mode === "dark"
+                              ? theme.palette.background.alt
+                              : theme.palette.background.default,
+                          color: theme.palette.text.primary,
+                        }}
+                      >
+                        <Typography
+                          variant="h6"
+                          fontWeight="bold"
+                          sx={{ color: theme.palette.secondary.main, mb: 1 }}
+                        >
+                          Current Weather
+                        </Typography>
+                        <img
+                          src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                          alt={weatherData.desc}
+                          style={{ width: 50, height: 50 }}
+                        />
+                        <Typography variant="h5" fontWeight="bold">
+                          {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {weatherData.city}
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  )}
+                  <Grid item sx={{ flexGrow: 1, px: 1 }}>
+                    <Paper
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        height: "100%",
+                      }}
+                    >
+                      <Typography variant="h6" fontWeight="bold" gutterBottom>
+                        Local News
+                      </Typography>
+                      <Typography variant="body2">
+                        News feed coming soon...
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item sx={{ width: "20%", px: 1 }}>
+                    <Paper
+                      elevation={3}
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        backgroundColor:
+                          theme.palette.mode === "dark"
+                            ? theme.palette.background.alt
+                            : theme.palette.background.default,
+                        color: theme.palette.text.primary,
+                        textAlign: "center",
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.secondary.main, mb: 1 }}
+                      >
+                        Mortgage Estimate
+                      </Typography>
+                      <Typography
+                        variant="h5"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.secondary[200] }}
+                      >
+                        ${monthlyMortgage}/month
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          mt: 1,
+                          display: "block",
+                          color: theme.palette.text.secondary,
+                        }}
+                      >
+                        Based on 20% down, 4.50% interest,
+                        <br />
+                        25-year amortization
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              </Grid>
             </Grid>
           </Grid>
         </Box>
