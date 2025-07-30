@@ -249,7 +249,6 @@ const DisplayView = () => {
               <Grid
                 container
                 sx={{
-                  height: "100%",
                   flexWrap: "nowrap",
                 }}
               >
@@ -265,8 +264,8 @@ const DisplayView = () => {
                     sx={{
                       p: 2,
                       mb: 2,
-                      backgroundColor: "#fff",
-                      color: "#000",
+                      // backgroundColor: "#fff",
+                      // color: "#000",
                       boxShadow: 0,
                     }}
                   >
@@ -310,8 +309,6 @@ const DisplayView = () => {
                   <Paper
                     sx={{
                       p: 2,
-                      backgroundColor: "#fff",
-                      color: "#000",
                       boxShadow: 0,
                     }}
                   >
