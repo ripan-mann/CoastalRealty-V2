@@ -25,11 +25,22 @@ const NewsFeed = () => {
 
   return (
     <Paper
-      sx={{ ml: "23%", p: 2, flexGrow: 1, overflowY: "auto", boxShadow: 0 }}
+      sx={{ ml: "3%", p: 2, flexGrow: 1, overflowY: "auto", boxShadow: 0 }}
     >
-      <Typography variant="h6" fontWeight="bold" gutterBottom>
+      <Typography variant="h6" fontWeight="bold">
         Local News
       </Typography>
+      <Typography variant="caption" display="block">
+        {new Date().toLocaleDateString("en-CA", {
+          weekday: "short",
+          month: "long",
+          day: "numeric",
+        })}
+      </Typography>
+      <Typography variant="caption">
+        {new Date().toLocaleTimeString()}
+      </Typography>
+
       {articles.map((item) => (
         <Box key={item.guid} mb={1}>
           <Typography variant="body2">

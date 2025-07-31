@@ -20,6 +20,8 @@ import NewsFeed from "../../components/NewsFeed";
 
 // const DISPLAY_DURATION = 6000; // 60 sec
 const IMAGE_ROTATE_INTERVAL = 10000; // 10 sec
+const INFO_ROTATE_INTERVAL = 50000;
+const INFO_FADE_DELAY = 200; // delay after fade out before next info fades in
 
 const calculateMortgage = (listPrice) => {
   if (!listPrice || isNaN(listPrice)) return null;
@@ -48,6 +50,9 @@ const DisplayView = () => {
   const [weatherData, setWeatherData] = useState(null);
   const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
+  const [infoStage, setInfoStage] = useState(0); // 0: mortgage, 1: QR, 2: time
+  const [infoVisible, setInfoVisible] = useState(true);
+  const infoTimeoutRef = useRef();
 
   const fetchProperties = async () => {
     const data = await getProperties(displayedListingKeysRef.current);
@@ -217,6 +222,29 @@ const DisplayView = () => {
     }
   }, [currentPhotoSetIndex, currentListing]);
 
+  // Cycle mortgage estimate, QR code and time display with fade out/in
+  useEffect(() => {
+    let rotationTimeout;
+
+    const scheduleRotation = () => {
+      rotationTimeout = setTimeout(() => {
+        setInfoVisible(false);
+        infoTimeoutRef.current = setTimeout(() => {
+          setInfoStage((prev) => (prev + 1) % 3);
+          setInfoVisible(true);
+          scheduleRotation();
+        }, 500 + INFO_FADE_DELAY);
+      }, INFO_ROTATE_INTERVAL);
+    };
+
+    scheduleRotation();
+
+    return () => {
+      clearTimeout(rotationTimeout);
+      if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
+    };
+  }, []);
+
   if (!currentListing) return null;
 
   const monthlyMortgage = calculateMortgage(currentListing.ListPrice);
@@ -254,8 +282,8 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "30%",
-                    maxWidth: "30%",
+                    minWidth: "25%",
+                    maxWidth: "25%",
                   }}
                 >
                   <Paper
@@ -265,6 +293,7 @@ const DisplayView = () => {
                       // backgroundColor: "#fff",
                       // color: "#000",
                       boxShadow: 0,
+                      width: "100%",
                     }}
                   >
                     <Avatar
@@ -273,7 +302,7 @@ const DisplayView = () => {
                         agentInfo?.Media?.[0]?.MediaURL ||
                         "/images/default-agent.png"
                       }
-                      sx={{ width: 72, height: 72, mb: 1 }}
+                      sx={{ width: 100, height: 100, mb: 1 }}
                     />
                     <Typography fontWeight="bold">
                       {`${agentInfo?.MemberFirstName || ""} ${
@@ -308,6 +337,7 @@ const DisplayView = () => {
                     sx={{
                       p: 2,
                       boxShadow: 0,
+                      width: "100%",
                     }}
                   >
                     <Typography fontWeight="bold" gutterBottom>
@@ -352,55 +382,6 @@ const DisplayView = () => {
                         </li>
                       )}
                     </ul>
-                    {/* Optional QR Code */}
-                    <QRCodeCanvas
-                      value={`https://${currentListing.ListingURL}`}
-                      size={150}
-                      style={{
-                        marginTop: "3rem",
-                        backgroundColor: theme.palette.background.primary,
-                      }}
-                    />
-
-                    {weatherData && (
-                      <Paper
-                        sx={{
-                          p: 2,
-                          boxShadow: 0,
-                        }}
-                      >
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          sx={{ mb: 1 }}
-                        >
-                          Current Weather
-                        </Typography>
-                        <img
-                          src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                          alt={weatherData.desc}
-                          style={{ width: 50, height: 50 }}
-                        />
-                        <Typography variant="h5" fontWeight="bold">
-                          {Math.round(weatherData.temp)}°C | {weatherData.desc}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {weatherData.city}
-                        </Typography>
-                      </Paper>
-                    )}
-
-                    <Typography variant="caption" display="block" mt={4}>
-                      {new Date().toLocaleDateString("en-CA", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </Typography>
-
-                    <Typography variant="caption">
-                      {new Date().toLocaleTimeString()}
-                    </Typography>
                   </Paper>
                 </Grid>
 
@@ -408,11 +389,12 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "70%",
-                    maxWidth: "70%",
-                    height: "78vh",
+                    minWidth: "75%",
+                    maxWidth: "75%",
+                    height: "77vh",
                     overflow: "hidden",
                     pr: 2,
+                    zIndex: 99,
                   }}
                 >
                   <Grid
@@ -464,28 +446,23 @@ const DisplayView = () => {
             </Grid>
 
             {/* Row 2: Logo, Weather, News and Mortgage */}
-            <Grid item sx={{ width: "100%" }}>
+            <Grid item sx={{ position: "relative", zIndex: 3 }}>
               <Box
                 sx={{
-                  position: "relative",
                   display: "flex",
-                  // gap: 2,
                   alignItems: "flex-start",
-                  flexWrap: "wrap",
+                  // flexWrap: "wrap",
+                  width: "100%",
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
                 }}
               >
-                <Box
-                  sx={{
-                    textAlign: "center",
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                  }}
-                >
+                <Box>
                   <img
                     src={realtyImage}
                     alt="Century 21 Logo"
-                    style={{ maxHeight: 250 }}
+                    style={{ maxHeight: 200 }}
                   />
                 </Box>
 
@@ -494,28 +471,89 @@ const DisplayView = () => {
                   elevation={3}
                   sx={{ mr: 8, p: 2, textAlign: "center", boxShadow: 0 }}
                 >
-                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                    Mortgage Estimate
-                  </Typography>
-                  <Typography
-                    variant="h5"
-                    fontWeight="bold"
-                    sx={{ color: theme.palette.secondary[200] }}
+                  <Fade
+                    in={infoStage === 0 && infoVisible}
+                    timeout={500}
+                    unmountOnExit
                   >
-                    ${monthlyMortgage}/month
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      mt: 1,
-                      display: "block",
-                      color: theme.palette.text.secondary,
-                    }}
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                        Mortgage Estimate
+                      </Typography>
+                      <Typography
+                        variant="h5"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.secondary[200] }}
+                      >
+                        ${monthlyMortgage}/month
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          mt: 1,
+                          display: "block",
+                          color: theme.palette.text.secondary,
+                        }}
+                      >
+                        Based on 20% down, 4.50% interest,
+                        <br />
+                        25-year amortization
+                      </Typography>
+                    </Box>
+                  </Fade>
+
+                  <Fade
+                    in={infoStage === 1 && infoVisible}
+                    timeout={500}
+                    unmountOnExit
                   >
-                    Based on 20% down, 4.50% interest,
-                    <br />
-                    25-year amortization
-                  </Typography>
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <QRCodeCanvas
+                        value={`https://${currentListing.ListingURL}`}
+                        size={150}
+                        style={{
+                          backgroundColor: theme.palette.background.primary,
+                        }}
+                      />
+                    </Box>
+                  </Fade>
+
+                  <Fade
+                    in={infoStage === 2 && infoVisible}
+                    timeout={500}
+                    unmountOnExit
+                  >
+                    <Box>
+                      {weatherData && (
+                        <Paper
+                          sx={{
+                            p: 2,
+                            boxShadow: 0,
+                          }}
+                        >
+                          <Typography
+                            variant="h6"
+                            fontWeight="bold"
+                            sx={{ mb: 1 }}
+                          >
+                            Current Weather
+                          </Typography>
+                          <img
+                            src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                            alt={weatherData.desc}
+                            style={{ width: 50, height: 50 }}
+                          />
+                          <Typography variant="h5" fontWeight="bold">
+                            {Math.round(weatherData.temp)}°C |{" "}
+                            {weatherData.desc}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {weatherData.city}
+                          </Typography>
+                        </Paper>
+                      )}
+                    </Box>
+                  </Fade>
                 </Paper>
               </Box>
             </Grid>
@@ -531,8 +569,8 @@ const DisplayView = () => {
             height: isFullscreen ? 35 : 56,
             borderRadius: "50%",
             backgroundColor: isFullscreen
-              ? theme.palette.secondary[200]
-              : theme.palette.primary[500],
+              ? theme.palette.secondary[800]
+              : theme.palette.primary[300],
             color: theme.palette.secondary[200],
             display: "flex",
             justifyContent: "center",
