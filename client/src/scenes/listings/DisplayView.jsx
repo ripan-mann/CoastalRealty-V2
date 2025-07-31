@@ -223,17 +223,15 @@ const DisplayView = () => {
 
   return (
     <Fade in={fadeIn} timeout={500}>
-      <Box sx={{ position: "relative" }}>
+      <Box sx={{ position: "relative", height: "100vh", overflow: "hidden" }}>
         <Box
           sx={{
-            // p: 2,
             display: "flex",
             flexDirection: "column",
-            height: "100vh",
+            height: "100%",
             boxSizing: "border-box",
-            // width: "100vw",
-            overflow: "hidden",
             pt: isFullscreen ? 10 : 0,
+            overflow: "hidden",
           }}
         >
           <Grid
@@ -384,8 +382,9 @@ const DisplayView = () => {
                   sx={{
                     minWidth: "70%",
                     maxWidth: "70%",
-                    height: "100%",
+                    height: "78vh",
                     overflow: "hidden",
+                    pr: 2,
                   }}
                 >
                   <Grid
@@ -438,17 +437,20 @@ const DisplayView = () => {
 
             {/* Row 2: Logo, Weather, News and Mortgage */}
             <Grid item sx={{ width: "100%" }}>
-              <Box sx={{ display: "flex", gap: 2, alignItems: "flex-start" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  // gap: 2,
+                  alignItems: "flex-start",
+                  flexWrap: "wrap",
+                }}
+              >
                 <Box sx={{ textAlign: "center" }}>
                   <img
                     src={realtyImage}
                     alt="Century 21 Logo"
                     style={{ maxHeight: 100 }}
                   />
-                  <Typography mt={1}>Coastal Realty Ltd</Typography>
-                  <Typography variant="body2" mt={1}>
-                    (604) 599-4888
-                  </Typography>
                 </Box>
                 {weatherData && (
                   <Paper sx={{ p: 2, borderRadius: 2, textAlign: "center" }}>
