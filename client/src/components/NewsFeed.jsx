@@ -24,7 +24,9 @@ const NewsFeed = () => {
   }, []);
 
   return (
-    <Paper sx={{ p: 2, flexGrow: 1, overflowY: "auto" }}>
+    <Paper
+      sx={{ ml: "23%", p: 2, flexGrow: 1, overflowY: "auto", boxShadow: 0 }}
+    >
       <Typography variant="h6" fontWeight="bold" gutterBottom>
         Local News
       </Typography>

@@ -362,6 +362,34 @@ const DisplayView = () => {
                       }}
                     />
 
+                    {weatherData && (
+                      <Paper
+                        sx={{
+                          p: 2,
+                          boxShadow: 0,
+                        }}
+                      >
+                        <Typography
+                          variant="h6"
+                          fontWeight="bold"
+                          sx={{ mb: 1 }}
+                        >
+                          Current Weather
+                        </Typography>
+                        <img
+                          src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                          alt={weatherData.desc}
+                          style={{ width: 50, height: 50 }}
+                        />
+                        <Typography variant="h5" fontWeight="bold">
+                          {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {weatherData.city}
+                        </Typography>
+                      </Paper>
+                    )}
+
                     <Typography variant="caption" display="block" mt={4}>
                       {new Date().toLocaleDateString("en-CA", {
                         weekday: "long",
@@ -439,47 +467,34 @@ const DisplayView = () => {
             <Grid item sx={{ width: "100%" }}>
               <Box
                 sx={{
+                  position: "relative",
                   display: "flex",
                   // gap: 2,
                   alignItems: "flex-start",
                   flexWrap: "wrap",
                 }}
               >
-                <Box sx={{ textAlign: "center" }}>
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                  }}
+                >
                   <img
                     src={realtyImage}
                     alt="Century 21 Logo"
-                    style={{ maxHeight: 100 }}
+                    style={{ maxHeight: 250 }}
                   />
                 </Box>
-                {weatherData && (
-                  <Paper sx={{ p: 2, borderRadius: 2, textAlign: "center" }}>
-                    <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                      Current Weather
-                    </Typography>
-                    <img
-                      src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                      alt={weatherData.desc}
-                      style={{ width: 50, height: 50 }}
-                    />
-                    <Typography variant="h5" fontWeight="bold">
-                      {Math.round(weatherData.temp)}°C | {weatherData.desc}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {weatherData.city}
-                    </Typography>
-                  </Paper>
-                )}
+
                 <NewsFeed />
                 <Paper
                   elevation={3}
-                  sx={{ p: 2, borderRadius: 2, textAlign: "center" }}
+                  sx={{ mr: 8, p: 2, textAlign: "center", boxShadow: 0 }}
                 >
-                  <Typography
-                    variant="h6"
-                    fontWeight="bold"
-                    sx={{ color: theme.palette.secondary.main, mb: 1 }}
-                  >
+                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
                     Mortgage Estimate
                   </Typography>
                   <Typography
