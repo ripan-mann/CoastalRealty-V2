@@ -60,7 +60,7 @@ const DisplayView = () => {
   const infoTimeoutRef = useRef();
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
-  const photoGridHeight = isLargeScreen ? "78vh" : "70vh";
+  const photoGridHeight = isLargeScreen ? "76vh" : "70vh";
   const logoMaxHeight = isLargeScreen ? 220 : 150;
 
   const fetchProperties = async () => {
@@ -464,6 +464,7 @@ const DisplayView = () => {
             <Grid
               item
               sx={{
+                pt: 2,
                 position: "relative",
                 zIndex: 3,
                 backgroundColor: theme.palette.grey[100],
