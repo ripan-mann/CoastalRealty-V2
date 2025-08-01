@@ -61,7 +61,7 @@ const DisplayView = () => {
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
   const photoGridHeight = isLargeScreen ? "78vh" : "70vh";
-  const logoMaxHeight = isLargeScreen ? 200 : 100;
+  const logoMaxHeight = isLargeScreen ? 220 : 150;
 
   const fetchProperties = async () => {
     const data = await getProperties(displayedListingKeysRef.current);
@@ -245,7 +245,7 @@ const DisplayView = () => {
       rotationTimeout = setTimeout(() => {
         setInfoVisible(false);
         infoTimeoutRef.current = setTimeout(() => {
-          setInfoStage((prev) => (prev + 1) % 5);
+          setInfoStage((prev) => (prev + 1) % 4);
           setInfoVisible(true);
           scheduleRotation();
         }, 500 + INFO_FADE_DELAY);
@@ -412,58 +412,63 @@ const DisplayView = () => {
                     zIndex: 99,
                   }}
                 >
-                  <Fade in={imagesFadeIn} timeout={500}>
-                    <Grid
-                      container
-                      spacing={0}
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        minHeight: 0,
-                      }}
-                    >
-                      {currentPhotoSet?.slice(0, 6).map((media, index) => (
-                        <Grid
-                          item
-                          key={index}
-                          xs={6}
+                  <Grid
+                    container
+                    spacing={0}
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      minHeight: 0,
+                    }}
+                  >
+                    {currentPhotoSet?.slice(0, 6).map((media, index) => (
+                      <Grid
+                        item
+                        key={index}
+                        xs={6}
+                        sx={{
+                          width: "50%",
+                          height: "calc(100% / 3)", // Each row gets 1/3 height
+                          p: 0.5,
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <Box
                           sx={{
-                            width: "50%",
-                            height: "calc(100% / 3)", // Each row gets 1/3 height
-                            p: 0.5,
-                            boxSizing: "border-box",
+                            width: "100%",
+                            height: "100%",
+                            overflow: "hidden",
+                            borderRadius: 1,
                           }}
                         >
                           <Box
+                            component="img"
+                            src={media.MediaURL}
+                            alt={`Property ${index + 1}`}
                             sx={{
                               width: "100%",
                               height: "100%",
-                              overflow: "hidden",
-                              borderRadius: 1,
+                              objectFit: "cover",
                             }}
-                          >
-                            <Box
-                              component="img"
-                              src={media.MediaURL}
-                              alt={`Property ${index + 1}`}
-                              sx={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          </Box>
-                        </Grid>
-                      ))}
-                    </Grid>
-                  </Fade>
+                          />
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
                 </Grid>
               </Grid>
             </Grid>
 
             {/* Row 2: Logo, Weather, News and Mortgage */}
-            <Grid item sx={{ position: "relative", zIndex: 3 }}>
+            <Grid
+              item
+              sx={{
+                position: "relative",
+                zIndex: 3,
+                backgroundColor: theme.palette.grey[100],
+              }}
+            >
               <Box
                 sx={{
                   display: "flex",
@@ -486,7 +491,14 @@ const DisplayView = () => {
                 <NewsFeed />
                 <Paper
                   elevation={3}
-                  sx={{ mr: 8, p: 2, textAlign: "center", boxShadow: 0 }}
+                  sx={{
+                    mr: 8,
+                    ml: 8,
+                    p: 2,
+                    textAlign: "center",
+                    boxShadow: 0,
+                    backgroundColor: theme.palette.grey[100],
+                  }}
                 >
                   <Fade
                     in={infoStage === 0 && infoVisible}
@@ -546,6 +558,7 @@ const DisplayView = () => {
                           sx={{
                             p: 2,
                             boxShadow: 0,
+                            backgroundColor: theme.palette.grey[100],
                           }}
                         >
                           <Typography

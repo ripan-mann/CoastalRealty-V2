@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Paper, Typography, Box } from "@mui/material";
+import { Paper, Typography, Box, useTheme } from "@mui/material";
 import GNews from "@gnews-io/gnews-io-js";
 
 const GNEWS_API_KEY = process.env.REACT_APP_GNEWS_API_KEY;
@@ -9,6 +9,7 @@ const client = new GNews(GNEWS_API_KEY);
 const ROTATE_INTERVAL = 10000;
 
 const NewsFeed = () => {
+  const theme = useTheme();
   const [articles, setArticles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -40,12 +41,15 @@ const NewsFeed = () => {
 
   return (
     <Paper
-      sx={{ ml: "3%", p: 2, flexGrow: 1, overflowY: "auto", boxShadow: 0 }}
+      sx={{
+        ml: "3%",
+        p: 2,
+        flexGrow: 1,
+        overflowY: "auto",
+        boxShadow: 0,
+        backgroundColor: theme.palette.grey[50],
+      }}
     >
-      <Typography variant="h6" fontWeight="bold">
-        Local News
-      </Typography>
-
       {articles.length > 0 && (
         <Box key={articles[currentIndex].url} mb={1}>
           <Typography variant="body2" fontWeight="bold">
