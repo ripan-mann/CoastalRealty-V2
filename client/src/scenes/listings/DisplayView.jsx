@@ -8,6 +8,7 @@ import {
   Fade,
   IconButton,
   useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
@@ -50,9 +51,16 @@ const DisplayView = () => {
   const [weatherData, setWeatherData] = useState(null);
   const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
+  const isLargeScreen = useMediaQuery(
+    "(min-width:1500px) and (min-height:1200px)"
+  );
   const [infoStage, setInfoStage] = useState(0); // 0: mortgage, 1: QR, 2: time
   const [infoVisible, setInfoVisible] = useState(true);
   const infoTimeoutRef = useRef();
+  const column1Width = isLargeScreen ? "25%" : "30%";
+  const column2Width = isLargeScreen ? "75%" : "70%";
+  const photoGridHeight = isLargeScreen ? "77vh" : "67vh";
+  const logoMaxHeight = isLargeScreen ? 200 : 150;
 
   const fetchProperties = async () => {
     const data = await getProperties(displayedListingKeysRef.current);
@@ -137,7 +145,7 @@ const DisplayView = () => {
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.msExitFullscreen) document.msExitFullscreen();
 
-      setIsSidebarOpen(true); // 👈 show sidebar
+      setIsSidebarOpen(false); // 👈 show sidebar
       setIsNavbarVisible(true); // 👈 show navbar
     }
 
@@ -282,8 +290,8 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "25%",
-                    maxWidth: "25%",
+                    minWidth: column1Width,
+                    maxWidth: column1Width,
                   }}
                 >
                   <Paper
@@ -389,9 +397,9 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: "75%",
-                    maxWidth: "75%",
-                    height: "77vh",
+                    minWidth: column2Width,
+                    maxWidth: column2Width,
+                    height: photoGridHeight,
                     overflow: "hidden",
                     pr: 2,
                     zIndex: 99,
@@ -453,16 +461,16 @@ const DisplayView = () => {
                   alignItems: "flex-start",
                   // flexWrap: "wrap",
                   width: "100%",
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
+                  // position: "absolute",
+                  // bottom: 0,
+                  // left: 0,
                 }}
               >
                 <Box>
                   <img
                     src={realtyImage}
                     alt="Century 21 Logo"
-                    style={{ maxHeight: 200 }}
+                    style={{ maxHeight: logoMaxHeight }}
                   />
                 </Box>
 
@@ -569,7 +577,7 @@ const DisplayView = () => {
             height: isFullscreen ? 35 : 56,
             borderRadius: "50%",
             backgroundColor: isFullscreen
-              ? theme.palette.secondary[800]
+              ? theme.palette.grey[0]
               : theme.palette.primary[300],
             color: theme.palette.secondary[200],
             display: "flex",

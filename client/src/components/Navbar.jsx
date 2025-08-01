@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   LightModeOutlined,
   DarkModeOutlined,
@@ -10,18 +10,9 @@ import { useDispatch } from "react-redux";
 import { setMode } from "state";
 import { AppBar, IconButton, Toolbar, useTheme } from "@mui/material";
 
-const Navbar = ({ user, isSidebarOpen, setIsSidebarOpen }) => {
+const Navbar = ({ isSidebarOpen, setIsSidebarOpen }) => {
   const dispatch = useDispatch();
   const theme = useTheme();
-
-  const [anchorEl, setAnchorEl] = useState(null);
-  const isOpen = Boolean(anchorEl);
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
 
   return (
     <AppBar
