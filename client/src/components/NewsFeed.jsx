@@ -1,26 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Typography, Box } from "@mui/material";
+import GNews from "@gnews-io/gnews-io-js";
 
-const NEWS_URL = encodeURIComponent("https://globalnews.ca/bc/feed/");
+const GNEWS_API_KEY = process.env.REACT_APP_GNEWS_API_KEY;
+
+const client = new GNews(GNEWS_API_KEY);
 
 const NewsFeed = () => {
   const [articles, setArticles] = useState([]);
 
   useEffect(() => {
-    const fetchNews = async () => {
-      try {
-        const res = await fetch(
-          `https://feed2json.org/convert?url=${NEWS_URL}`
-        );
-        const data = await res.json();
-        if (data.items) {
-          setArticles(data.items.slice(0, 5));
-        }
-      } catch (err) {
-        console.error("Failed to fetch news", err);
-      }
-    };
-    fetchNews();
+    // Get top headlines
+    client
+      .topHeadlines({
+        lang: "en",
+        country: "ca",
+        max: 10,
+        category: "general",
+      })
+      .then((response) => {
+        console.log(`Found ${response.totalArticles} articles`);
+        console.log(response.articles);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   }, []);
 
   return (
@@ -42,7 +46,7 @@ const NewsFeed = () => {
       </Typography>
 
       {articles.map((item) => (
-        <Box key={item.guid} mb={1}>
+        <Box key={item.url} mb={1}>
           <Typography variant="body2">
             <a
               href={item.url}

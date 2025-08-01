@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Divider,
   Drawer,
   IconButton,
   List,
@@ -16,12 +15,10 @@ import {
   ChevronLeft,
   AdminPanelSettingsOutlined,
   HomeWorkOutlined,
-  SettingsOutlined,
   VisibilityOutlined,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import FlexBetween from "./FlexBetween";
-import profileImage from "assets/profile.jpeg";
 
 const navItems = [
   {
