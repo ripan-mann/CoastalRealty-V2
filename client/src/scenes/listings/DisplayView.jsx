@@ -45,6 +45,7 @@ const DisplayView = () => {
   const [currentPhotoSetIndex, setCurrentPhotoSetIndex] = useState(0);
   const [totalPhotoSets, setTotalPhotoSets] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
+  const [imagesFadeIn, setImagesFadeIn] = useState(true);
   const currentListing = properties[currentListingIndex];
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { setIsSidebarOpen, setIsNavbarVisible } = useOutletContext();
@@ -60,7 +61,7 @@ const DisplayView = () => {
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
   const photoGridHeight = isLargeScreen ? "78vh" : "70vh";
-  const logoMaxHeight = isLargeScreen ? 200 : 150;
+  const logoMaxHeight = isLargeScreen ? 200 : 100;
 
   const fetchProperties = async () => {
     const data = await getProperties(displayedListingKeysRef.current);
@@ -160,6 +161,7 @@ const DisplayView = () => {
     if (remainder >= 4) sets += 1;
     setTotalPhotoSets(sets);
     setCurrentPhotoSetIndex(0);
+    setImagesFadeIn(true);
   }, [currentListing]);
 
   // Rotate through photo sets and move to the next listing when finished
@@ -210,7 +212,11 @@ const DisplayView = () => {
           setFadeIn(true);
         }, 500);
       } else {
-        setCurrentPhotoSetIndex((prev) => prev + 1);
+        setImagesFadeIn(false);
+        setTimeout(() => {
+          setCurrentPhotoSetIndex((prev) => prev + 1);
+          setImagesFadeIn(true);
+        }, 500);
       }
     }, IMAGE_ROTATE_INTERVAL);
     return () => clearInterval(interval);
@@ -227,6 +233,7 @@ const DisplayView = () => {
       const startIndex = currentPhotoSetIndex * 6;
       const photos = currentListing.Media?.slice(startIndex, startIndex + 6);
       setCurrentPhotoSet(photos);
+      setImagesFadeIn(true);
     }
   }, [currentPhotoSetIndex, currentListing]);
 
@@ -238,7 +245,7 @@ const DisplayView = () => {
       rotationTimeout = setTimeout(() => {
         setInfoVisible(false);
         infoTimeoutRef.current = setTimeout(() => {
-          setInfoStage((prev) => (prev + 1) % 3);
+          setInfoStage((prev) => (prev + 1) % 5);
           setInfoVisible(true);
           scheduleRotation();
         }, 500 + INFO_FADE_DELAY);
@@ -266,7 +273,7 @@ const DisplayView = () => {
             flexDirection: "column",
             height: "100%",
             boxSizing: "border-box",
-            pt: isFullscreen ? 4 : 0,
+            pt: isFullscreen ? 3 : 0,
             overflow: "hidden",
           }}
         >
@@ -405,50 +412,52 @@ const DisplayView = () => {
                     zIndex: 99,
                   }}
                 >
-                  <Grid
-                    container
-                    spacing={0}
-                    sx={{
-                      height: "100%",
-                      display: "flex",
-                      flexWrap: "wrap",
-                      minHeight: 0,
-                    }}
-                  >
-                    {currentPhotoSet?.slice(0, 6).map((media, index) => (
-                      <Grid
-                        item
-                        key={index}
-                        xs={6}
-                        sx={{
-                          width: "50%",
-                          height: "calc(100% / 3)", // Each row gets 1/3 height
-                          p: 0.5,
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <Box
+                  <Fade in={imagesFadeIn} timeout={500}>
+                    <Grid
+                      container
+                      spacing={0}
+                      sx={{
+                        height: "100%",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        minHeight: 0,
+                      }}
+                    >
+                      {currentPhotoSet?.slice(0, 6).map((media, index) => (
+                        <Grid
+                          item
+                          key={index}
+                          xs={6}
                           sx={{
-                            width: "100%",
-                            height: "100%",
-                            overflow: "hidden",
-                            borderRadius: 1,
+                            width: "50%",
+                            height: "calc(100% / 3)", // Each row gets 1/3 height
+                            p: 0.5,
+                            boxSizing: "border-box",
                           }}
                         >
                           <Box
-                            component="img"
-                            src={media.MediaURL}
-                            alt={`Property ${index + 1}`}
                             sx={{
                               width: "100%",
                               height: "100%",
-                              objectFit: "cover",
+                              overflow: "hidden",
+                              borderRadius: 1,
                             }}
-                          />
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
+                          >
+                            <Box
+                              component="img"
+                              src={media.MediaURL}
+                              alt={`Property ${index + 1}`}
+                              sx={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Fade>
                 </Grid>
               </Grid>
             </Grid>
@@ -560,6 +569,24 @@ const DisplayView = () => {
                           </Typography>
                         </Paper>
                       )}
+                    </Box>
+                  </Fade>
+                  <Fade
+                    in={infoStage === 3 && infoVisible}
+                    timeout={500}
+                    unmountOnExit
+                  >
+                    <Box>
+                      <Typography variant="caption" display="block">
+                        {new Date().toLocaleDateString("en-CA", {
+                          weekday: "short",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </Typography>
+                      <Typography variant="caption">
+                        {new Date().toLocaleTimeString()}
+                      </Typography>
                     </Box>
                   </Fade>
                 </Paper>

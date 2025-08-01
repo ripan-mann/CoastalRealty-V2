@@ -65,17 +65,6 @@ const NewsFeed = () => {
           )}
         </Box>
       )}
-
-      <Typography variant="caption" display="block">
-        {new Date().toLocaleDateString("en-CA", {
-          weekday: "short",
-          month: "long",
-          day: "numeric",
-        })}
-      </Typography>
-      <Typography variant="caption">
-        {new Date().toLocaleTimeString()}
-      </Typography>
     </Paper>
   );
 };
