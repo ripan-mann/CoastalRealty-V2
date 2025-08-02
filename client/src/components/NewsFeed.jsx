@@ -1,76 +1,63 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Typography, Box, useTheme } from "@mui/material";
-import GNews from "@gnews-io/gnews-io-js";
 
-const GNEWS_API_KEY = process.env.REACT_APP_GNEWS_API_KEY;
+const RSS_URL =
+  "https://news.google.com/rss/search?q=British+Columbia&hl=en-CA&gl=CA&ceid=CA:en";
 
-const client = new GNews(GNEWS_API_KEY);
-
-const ROTATE_INTERVAL = 10000;
+const stripHTML = (html) => {
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = html;
+  return tempDiv.textContent || tempDiv.innerText || "";
+};
 
 const NewsFeed = () => {
   const theme = useTheme();
-  const [articles, setArticles] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   useEffect(() => {
-    // Get top headlines
-    client
-      .topHeadlines({
-        lang: "en",
-        country: "ca",
-        max: 100,
-      })
-      .then((response) => {
-        if (Array.isArray(response.articles)) {
-          setArticles(response.articles);
-        }
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+    const fetchFeed = async () => {
+      try {
+        const response = await fetch(RSS_URL);
+        if (!response.ok) throw new Error("Failed to fetch news feed");
+        const xml = await response.text();
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xml, "application/xml");
+        const itemsArray = Array.from(xmlDoc.querySelectorAll("item")).slice(
+          0,
+          5
+        );
+
+        const parsedItems = itemsArray.map((item) => {
+          const rawDescription =
+            item.querySelector("description")?.textContent || "";
+          const cleanedDescription = stripHTML(rawDescription)
+            .replace(/\s+/g, " ")
+            .trim();
+
+          const matchSource = rawDescription.match(/<font[^>]*>(.*?)<\/font>/i);
+          const source =
+            item.querySelector("source")?.textContent ||
+            (matchSource ? matchSource[1] : "Unknown");
+
+          return {
+            title: item.querySelector("title")?.textContent || "No title",
+            description: cleanedDescription.slice(0, 150),
+            author: source,
+          };
+        });
+
+        setItems(parsedItems);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFeed();
   }, []);
-
-  useEffect(() => {
-    if (articles.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % articles.length);
-    }, ROTATE_INTERVAL);
-    return () => clearInterval(interval);
-  }, [articles]);
-
-  return (
-    <Paper
-      sx={{
-        ml: "3%",
-        p: 2,
-        flexGrow: 1,
-        overflowY: "auto",
-        boxShadow: 0,
-        backgroundColor: theme.palette.grey[50],
-      }}
-    >
-      {articles.length > 0 && (
-        <Box key={articles[currentIndex].url} mb={1}>
-          <Typography variant="body2" fontWeight="bold">
-            <a
-              href={articles[currentIndex].url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              {articles[currentIndex].title}
-            </a>
-          </Typography>
-          {articles[currentIndex].description && (
-            <Typography variant="caption" color="textSecondary">
-              {articles[currentIndex].description}
-            </Typography>
-          )}
-        </Box>
-      )}
-    </Paper>
-  );
 };
 
 export default NewsFeed;
