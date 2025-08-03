@@ -21,8 +21,6 @@ import NewsFeed from "../../components/NewsFeed";
 
 // const DISPLAY_DURATION = 6000; // 60 sec
 const IMAGE_ROTATE_INTERVAL = 10000; // 10 sec
-const INFO_ROTATE_INTERVAL = 50000;
-const INFO_FADE_DELAY = 200; // delay after fade out before next info fades in
 
 const calculateMortgage = (listPrice) => {
   if (!listPrice || isNaN(listPrice)) return null;
@@ -45,7 +43,6 @@ const DisplayView = () => {
   const [currentPhotoSetIndex, setCurrentPhotoSetIndex] = useState(0);
   const [totalPhotoSets, setTotalPhotoSets] = useState(0);
   const [fadeIn, setFadeIn] = useState(true);
-  const [imagesFadeIn, setImagesFadeIn] = useState(true);
   const currentListing = properties[currentListingIndex];
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { setIsSidebarOpen, setIsNavbarVisible } = useOutletContext();
@@ -55,9 +52,6 @@ const DisplayView = () => {
   const isLargeScreen = useMediaQuery(
     "(min-width:1500px) and (min-height:1200px)"
   );
-  const [infoStage, setInfoStage] = useState(0); // 0: mortgage, 1: QR, 2: time
-  const [infoVisible, setInfoVisible] = useState(true);
-  const infoTimeoutRef = useRef();
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
   const photoGridHeight = isLargeScreen ? "76vh" : "75vh";
@@ -161,7 +155,6 @@ const DisplayView = () => {
     if (remainder >= 4) sets += 1;
     setTotalPhotoSets(sets);
     setCurrentPhotoSetIndex(0);
-    setImagesFadeIn(true);
   }, [currentListing]);
 
   // Rotate through photo sets and move to the next listing when finished
@@ -212,10 +205,8 @@ const DisplayView = () => {
           setFadeIn(true);
         }, 500);
       } else {
-        setImagesFadeIn(false);
         setTimeout(() => {
           setCurrentPhotoSetIndex((prev) => prev + 1);
-          setImagesFadeIn(true);
         }, 500);
       }
     }, IMAGE_ROTATE_INTERVAL);
@@ -233,32 +224,8 @@ const DisplayView = () => {
       const startIndex = currentPhotoSetIndex * 6;
       const photos = currentListing.Media?.slice(startIndex, startIndex + 6);
       setCurrentPhotoSet(photos);
-      setImagesFadeIn(true);
     }
   }, [currentPhotoSetIndex, currentListing]);
-
-  // Cycle mortgage estimate, QR code and time display with fade out/in
-  useEffect(() => {
-    let rotationTimeout;
-
-    const scheduleRotation = () => {
-      rotationTimeout = setTimeout(() => {
-        setInfoVisible(false);
-        infoTimeoutRef.current = setTimeout(() => {
-          setInfoStage((prev) => (prev + 1) % 4);
-          setInfoVisible(true);
-          scheduleRotation();
-        }, 500 + INFO_FADE_DELAY);
-      }, INFO_ROTATE_INTERVAL);
-    };
-
-    scheduleRotation();
-
-    return () => {
-      clearTimeout(rotationTimeout);
-      if (infoTimeoutRef.current) clearTimeout(infoTimeoutRef.current);
-    };
-  }, []);
 
   if (!currentListing) return null;
 
@@ -398,6 +365,62 @@ const DisplayView = () => {
                       )}
                     </ul>
                   </Paper>
+                  {weatherData && (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        boxShadow: 0,
+                        width: "100%",
+                        textAlign: "center",
+                      }}
+                    >
+                      <img
+                        src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                        alt={weatherData.desc}
+                        style={{ width: 50, height: 50 }}
+                      />
+                      <Typography variant="h5" fontWeight="bold">
+                        {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {weatherData.city}
+                      </Typography>
+                    </Paper>
+                  )}
+                  {monthlyMortgage && (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        boxShadow: 0,
+                        width: "100%",
+                        textAlign: "center",
+                        // backgroundColor: theme.palette.grey[100],
+                      }}
+                    >
+                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
+                        Mortgage Estimate
+                      </Typography>
+                      <Typography
+                        variant="h5"
+                        fontWeight="bold"
+                        sx={{ color: theme.palette.secondary[200] }}
+                      >
+                        ${monthlyMortgage}/month
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          mt: 1,
+                          display: "block",
+                          color: theme.palette.text.secondary,
+                        }}
+                      >
+                        Based on 20% down, 4.50% interest,
+                        <br />
+                        25-year amortization
+                      </Typography>
+                    </Paper>
+                  )}
                 </Grid>
 
                 {/* Column 2: Photo Grid */}
@@ -460,7 +483,7 @@ const DisplayView = () => {
               </Grid>
             </Grid>
 
-            {/* Row 2: Logo, Weather, News and Mortgage */}
+            {/* Row 2: Logo, News and QR */}
             <Grid
               item
               sx={{
@@ -501,107 +524,15 @@ const DisplayView = () => {
                     backgroundColor: theme.palette.grey[100],
                   }}
                 >
-                  <Fade
-                    in={infoStage === 0 && infoVisible}
-                    timeout={500}
-                    unmountOnExit
-                  >
-                    <Box>
-                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                        Mortgage Estimate
-                      </Typography>
-                      <Typography
-                        variant="h5"
-                        fontWeight="bold"
-                        sx={{ color: theme.palette.secondary[200] }}
-                      >
-                        ${monthlyMortgage}/month
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          mt: 1,
-                          display: "block",
-                          color: theme.palette.text.secondary,
-                        }}
-                      >
-                        Based on 20% down, 4.50% interest,
-                        <br />
-                        25-year amortization
-                      </Typography>
-                    </Box>
-                  </Fade>
-
-                  <Fade
-                    in={infoStage === 1 && infoVisible}
-                    timeout={500}
-                    unmountOnExit
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "center" }}>
-                      <QRCodeCanvas
-                        value={`https://${currentListing.ListingURL}`}
-                        size={150}
-                        style={{
-                          backgroundColor: theme.palette.background.primary,
-                        }}
-                      />
-                    </Box>
-                  </Fade>
-
-                  <Fade
-                    in={infoStage === 2 && infoVisible}
-                    timeout={500}
-                    unmountOnExit
-                  >
-                    <Box>
-                      {weatherData && (
-                        <Paper
-                          sx={{
-                            p: 2,
-                            boxShadow: 0,
-                            backgroundColor: theme.palette.grey[100],
-                          }}
-                        >
-                          {/* <Typography
-                            variant="h6"
-                            fontWeight="bold"
-                            sx={{ mb: 1 }}
-                          >
-                            Current Weather
-                          </Typography> */}
-                          <img
-                            src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                            alt={weatherData.desc}
-                            style={{ width: 50, height: 50 }}
-                          />
-                          <Typography variant="h5" fontWeight="bold">
-                            {Math.round(weatherData.temp)}°C {weatherData.desc}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {weatherData.city}
-                          </Typography>
-                        </Paper>
-                      )}
-                    </Box>
-                  </Fade>
-                  <Fade
-                    in={infoStage === 3 && infoVisible}
-                    timeout={500}
-                    unmountOnExit
-                  >
-                    <Box>
-                      <Typography variant="caption" display="block">
-                        {new Date().toLocaleDateString("en-CA", {
-                          weekday: "short",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </Typography>
-                      <Typography variant="caption">
-                        {new Date().toLocaleTimeString()}
-                      </Typography>
-                    </Box>
-                  </Fade>
+                  <Box sx={{ display: "flex", justifyContent: "center" }}>
+                    <QRCodeCanvas
+                      value={`https://${currentListing.ListingURL}`}
+                      size={150}
+                      style={{
+                        backgroundColor: theme.palette.background.primary,
+                      }}
+                    />
+                  </Box>
                 </Paper>
               </Box>
             </Grid>
