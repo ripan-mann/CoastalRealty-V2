@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Typography, Box, useTheme } from "@mui/material";
 
-const RSS_URL =
-  "https://news.google.com/rss/search?q=British+Columbia&hl=en-CA&gl=CA&ceid=CA:en";
+const RSS_URL = "http://localhost:5000/api/news";
 
 const stripHTML = (html) => {
   const tempDiv = document.createElement("div");
@@ -15,6 +14,8 @@ const NewsFeed = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   useEffect(() => {
     const fetchFeed = async () => {
       try {
@@ -30,21 +31,29 @@ const NewsFeed = () => {
         );
 
         const parsedItems = itemsArray.map((item) => {
+          const title = item.querySelector("title")?.textContent || "No title";
+          const link = item.querySelector("link")?.textContent || "#";
           const rawDescription =
             item.querySelector("description")?.textContent || "";
-          const cleanedDescription = stripHTML(rawDescription)
-            .replace(/\s+/g, " ")
-            .trim();
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = rawDescription;
+          const description =
+            tempDiv.querySelector("a")?.textContent ||
+            stripHTML(rawDescription);
 
-          const matchSource = rawDescription.match(/<font[^>]*>(.*?)<\/font>/i);
           const source =
             item.querySelector("source")?.textContent ||
-            (matchSource ? matchSource[1] : "Unknown");
+            tempDiv.querySelector("font")?.textContent ||
+            "Unknown";
+
+          const pubDate = item.querySelector("pubDate")?.textContent || "";
 
           return {
-            title: item.querySelector("title")?.textContent || "No title",
-            description: cleanedDescription.slice(0, 150),
-            author: source,
+            title,
+            link,
+            description: description.trim(),
+            source,
+            pubDate,
           };
         });
 
@@ -58,6 +67,65 @@ const NewsFeed = () => {
 
     fetchFeed();
   }, []);
+
+  useEffect(() => {
+    if (!items.length) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % items.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [items]);
+
+  if (loading) {
+    return <Typography>Loading news...</Typography>;
+  }
+
+  if (error) {
+    return <Typography color="error">Error loading news: {error}</Typography>;
+  }
+
+  if (!items.length) {
+    return <Typography>No news available.</Typography>;
+  }
+
+  const current = items[currentIndex];
+
+  return (
+    <Paper
+      sx={{
+        p: 2,
+        backgroundColor: theme.palette.background.paper,
+      }}
+    >
+      <Typography variant="h6" gutterBottom>
+        <a
+          href={current.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "inherit", textDecoration: "none" }}
+        >
+          {current.title}
+        </a>
+      </Typography>
+      <Typography variant="body2" gutterBottom>
+        {current.description}
+      </Typography>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          mt: 1,
+        }}
+      >
+        <Typography variant="caption" color="text.secondary">
+          {current.source}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {current.pubDate}
+        </Typography>
+      </Box>
+    </Paper>
+  );
 };
 
 export default NewsFeed;
