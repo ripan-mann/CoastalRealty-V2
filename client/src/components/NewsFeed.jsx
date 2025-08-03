@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Paper, Typography, Box, useTheme } from "@mui/material";
 
-const RSS_URL = "http://localhost:5000/api/news";
+const FEED_ENDPOINT = "/api/news";
 
 const stripHTML = (html) => {
   const tempDiv = document.createElement("div");
@@ -19,7 +19,7 @@ const NewsFeed = () => {
   useEffect(() => {
     const fetchFeed = async () => {
       try {
-        const response = await fetch(RSS_URL);
+        const response = await fetch(FEED_ENDPOINT);
         if (!response.ok) throw new Error("Failed to fetch news feed");
         const xml = await response.text();
 
@@ -107,9 +107,9 @@ const NewsFeed = () => {
           {current.title}
         </a>
       </Typography>
-      <Typography variant="body2" gutterBottom>
+      {/* <Typography variant="body2" gutterBottom>
         {current.description}
-      </Typography>
+      </Typography> */}
       <Box
         sx={{
           display: "flex",

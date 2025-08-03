@@ -8,10 +8,6 @@ import morgan from "morgan";
 import ddfRoutes from "./routes/ddf.js";
 import newsRoutes from "./routes/news.js";
 
-// Data Imports
-import User from "./models/User.js";
-import { dataUser } from "./data/index.js";
-
 // CONFIGURATION
 dotenv.config();
 const app = express();
