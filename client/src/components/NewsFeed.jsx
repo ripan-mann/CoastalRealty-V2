@@ -72,7 +72,7 @@ const NewsFeed = () => {
     if (!items.length) return;
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % items.length);
-    }, 5000);
+    }, 50000);
     return () => clearInterval(interval);
   }, [items]);
 
@@ -94,7 +94,9 @@ const NewsFeed = () => {
     <Paper
       sx={{
         p: 2,
-        backgroundColor: theme.palette.background.paper,
+        backgroundColor: theme.palette.grey[100],
+        width: "70%",
+        boxShadow: 0,
       }}
     >
       <Typography variant="h6" gutterBottom>
@@ -102,9 +104,13 @@ const NewsFeed = () => {
           href={current.link}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "inherit", textDecoration: "none" }}
+          style={{
+            color: "inherit",
+            textDecoration: "none",
+            fontSize: "1.5rem",
+          }}
         >
-          {current.title}
+          {current.description}
         </a>
       </Typography>
       {/* <Typography variant="body2" gutterBottom>
@@ -120,9 +126,9 @@ const NewsFeed = () => {
         <Typography variant="caption" color="text.secondary">
           {current.source}
         </Typography>
-        <Typography variant="caption" color="text.secondary">
+        {/* <Typography variant="caption" color="text.secondary">
           {current.pubDate}
-        </Typography>
+        </Typography> */}
       </Box>
     </Paper>
   );

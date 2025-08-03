@@ -60,7 +60,7 @@ const DisplayView = () => {
   const infoTimeoutRef = useRef();
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
-  const photoGridHeight = isLargeScreen ? "76vh" : "65vh";
+  const photoGridHeight = isLargeScreen ? "76vh" : "75vh";
   const logoMaxHeight = isLargeScreen ? 220 : 150;
 
   const fetchProperties = async () => {
@@ -562,21 +562,20 @@ const DisplayView = () => {
                             backgroundColor: theme.palette.grey[100],
                           }}
                         >
-                          <Typography
+                          {/* <Typography
                             variant="h6"
                             fontWeight="bold"
                             sx={{ mb: 1 }}
                           >
                             Current Weather
-                          </Typography>
+                          </Typography> */}
                           <img
                             src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
                             alt={weatherData.desc}
                             style={{ width: 50, height: 50 }}
                           />
                           <Typography variant="h5" fontWeight="bold">
-                            {Math.round(weatherData.temp)}°C |{" "}
-                            {weatherData.desc}
+                            {Math.round(weatherData.temp)}°C {weatherData.desc}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
                             {weatherData.city}

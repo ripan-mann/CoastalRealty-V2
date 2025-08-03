@@ -8,8 +8,10 @@ import { useMemo } from "react";
 import { useSelector } from "react-redux";
 import Listings from "scenes/listings";
 import DisplayView from "scenes/listings/DisplayView";
+import useWakeLock from "./hooks/useWakeLock";
 
 function App() {
+  useWakeLock();
   const mode = useSelector((state) => state.global.mode);
   const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
   return (
