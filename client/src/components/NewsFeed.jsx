@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Paper, Typography, Box, useTheme } from "@mui/material";
+import { Paper, Typography, Box } from "@mui/material";
 
 const FEED_ENDPOINT = "/api/news";
 
@@ -10,7 +10,7 @@ const stripHTML = (html) => {
 };
 
 const NewsFeed = () => {
-  const theme = useTheme();
+  // const theme = useTheme();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

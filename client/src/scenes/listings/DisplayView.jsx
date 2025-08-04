@@ -284,48 +284,50 @@ const DisplayView = () => {
                         width: "100%",
                         textAlign: "left",
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
+                        alignItems: "center",
                         boxShadow: 0,
                       }}
                     >
-                      <Avatar
-                        alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
-                        src={
-                          agentInfo?.Media?.[0]?.MediaURL ||
-                          "/images/default-agent.png"
-                        }
-                        sx={{ width: 100, height: 100, mb: 1 }}
-                      />
-                      <Typography fontWeight="bold" fontSize="1.2rem">
-                        {`${agentInfo?.MemberFirstName || ""} ${
-                          agentInfo?.MemberLastName || ""
-                        }`}
-                      </Typography>
-                      {/* <Typography variant="body2">
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          flexGrow: 1,
+                        }}
+                      >
+                        <Avatar
+                          alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
+                          src={
+                            agentInfo?.Media?.[0]?.MediaURL ||
+                            "/images/default-agent.png"
+                          }
+                          sx={{ width: 100, height: 100, mb: 1 }}
+                        />
+                        <Typography fontWeight="bold" fontSize="1.2rem">
+                          {`${agentInfo?.MemberFirstName || ""} ${
+                            agentInfo?.MemberLastName || ""
+                          }`}
+                        </Typography>
+                        {/* <Typography variant="body2">
                         {agentInfo?.JobTitle || "Real Estate Agent"}
                       </Typography> */}
-                      <Typography variant="body2" fontSize="1rem">
-                        {agentInfo?.MemberOfficePhone || "Phone not available"}
-                      </Typography>
-                      {/* {agentInfo?.MemberSocialMedia?.[0]
+                        <Typography variant="body2" fontSize="1rem">
+                          {agentInfo?.MemberOfficePhone ||
+                            "Phone not available"}
+                        </Typography>
+                      </Box>
+                      {agentInfo?.MemberSocialMedia?.[0]
                         ?.SocialMediaUrlOrId && (
-                        <Typography
-                          variant="body2"
-                          sx={{ mt: 1, wordBreak: "break-word" }}
-                        >
-                          <a
-                            href={
+                        <Box ml={2}>
+                          <QRCodeCanvas
+                            value={
                               agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId
                             }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ textDecoration: "none", color: "#1976d2" }}
-                          >
-                            {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
-                          </a>
-                        </Typography>
-                      )} */}
+                            size={80}
+                          />
+                        </Box>
+                      )}
                     </Paper>
                     <Box sx={{ position: "relative", width: "100%" }}>
                       <Paper sx={{ p: 2, width: "100%", boxShadow: 0 }}>
