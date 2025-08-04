@@ -9,9 +9,18 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import BedIcon from "@mui/icons-material/Bed";
+import BathtubIcon from "@mui/icons-material/Bathtub";
+import SquareFootIcon from "@mui/icons-material/SquareFoot";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import StraightenIcon from "@mui/icons-material/Straighten";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import HomeIcon from "@mui/icons-material/Home";
+import CategoryIcon from "@mui/icons-material/Category";
 
 import { getProperties, getMemberByAgentKey } from "../../state/api";
 import realtyImage from "assets/c21-logo.png";
@@ -268,159 +277,202 @@ const DisplayView = () => {
                     maxWidth: column1Width,
                   }}
                 >
-                  <Paper
-                    sx={{
-                      p: 2,
-                      mb: 2,
-                      // backgroundColor: "#fff",
-                      // color: "#000",
-                      boxShadow: 0,
-                      width: "100%",
-                    }}
-                  >
-                    <Avatar
-                      alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
-                      src={
-                        agentInfo?.Media?.[0]?.MediaURL ||
-                        "/images/default-agent.png"
-                      }
-                      sx={{ width: 100, height: 100, mb: 1 }}
-                    />
-                    <Typography fontWeight="bold">
-                      {`${agentInfo?.MemberFirstName || ""} ${
-                        agentInfo?.MemberLastName || ""
-                      }`}
-                    </Typography>
-                    <Typography variant="body2">
-                      {agentInfo?.JobTitle || "Real Estate Agent"}
-                    </Typography>
-                    <Typography variant="body2">
-                      {agentInfo?.MemberOfficePhone || "Phone not available"}
-                    </Typography>
-                    {agentInfo?.MemberSocialMedia?.[0]?.SocialMediaUrlOrId && (
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 1, wordBreak: "break-word" }}
-                      >
-                        <a
-                          href={
-                            agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ textDecoration: "none", color: "#1976d2" }}
-                        >
-                          {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
-                        </a>
-                      </Typography>
-                    )}
-                  </Paper>
-                  <Paper
-                    sx={{
-                      p: 2,
-                      boxShadow: 0,
-                      width: "100%",
-                    }}
-                  >
-                    <Typography fontWeight="bold" gutterBottom>
-                      {`${currentListing.StreetNumber || ""} ${
-                        currentListing.StreetName || ""
-                      } ${currentListing.StreetSuffix || ""}
-                  `}
-                    </Typography>
-                    <Typography variant="body2">
-                      {`${currentListing.City || ""}, ${
-                        currentListing.StateOrProvince || ""
-                      } ${currentListing.PostalCode || ""}`}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mb: 1 }}>
-                      Price: $
-                      {currentListing.ListPrice?.toLocaleString() || "N/A"}
-                    </Typography>
-                    <ul style={{ paddingLeft: "16px", margin: 0 }}>
-                      <li>{currentListing.BedroomsTotal || 0} Bedrooms</li>
-                      <li>
-                        {currentListing.BathroomsTotalInteger || 0} Bathrooms
-                      </li>
-                      <li>{currentListing.LivingArea || "N/A"} Sq. Ft.</li>
-                      {currentListing.YearBuilt && (
-                        <li>Built in {currentListing.YearBuilt}</li>
-                      )}
-                      {currentListing.LotSizeDimensions && (
-                        <li>
-                          Lot Size: {currentListing.LotSizeDimensions}{" "}
-                          {currentListing.LotSizeUnits || ""}
-                        </li>
-                      )}
-                      {currentListing.StructureType?.[0] && (
-                        <li>Type: {currentListing.StructureType[0]}</li>
-                      )}
-                      {currentListing.ArchitecturalStyle?.[0] && (
-                        <li>Style: {currentListing.ArchitecturalStyle[0]}</li>
-                      )}
-                      {currentListing.ParkingFeatures?.length > 0 && (
-                        <li>
-                          Parking: {currentListing.ParkingFeatures.join(", ")}
-                        </li>
-                      )}
-                    </ul>
-                  </Paper>
-                  {weatherData && (
+                  <Stack spacing={2}>
                     <Paper
                       sx={{
                         p: 2,
-                        boxShadow: 0,
+                        // backgroundColor: "#fff",
+                        // color: "#000",
                         width: "100%",
                         textAlign: "center",
                       }}
+                      elevation={3}
                     >
-                      <img
-                        src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                        alt={weatherData.desc}
-                        style={{ width: 50, height: 50 }}
+                      <Avatar
+                        alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
+                        src={
+                          agentInfo?.Media?.[0]?.MediaURL ||
+                          "/images/default-agent.png"
+                        }
+                        sx={{ width: 100, height: 100, mb: 1 }}
                       />
-                      <Typography variant="h5" fontWeight="bold">
-                        {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                      <Typography fontWeight="bold">
+                        {`${agentInfo?.MemberFirstName || ""} ${
+                          agentInfo?.MemberLastName || ""
+                        }`}
                       </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {weatherData.city}
+                      <Typography variant="body2">
+                        {agentInfo?.JobTitle || "Real Estate Agent"}
                       </Typography>
+                      <Typography variant="body2">
+                        {agentInfo?.MemberOfficePhone || "Phone not available"}
+                      </Typography>
+                      {agentInfo?.MemberSocialMedia?.[0]
+                        ?.SocialMediaUrlOrId && (
+                        <Typography
+                          variant="body2"
+                          sx={{ mt: 1, wordBreak: "break-word" }}
+                        >
+                          <a
+                            href={
+                              agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: "none", color: "#1976d2" }}
+                          >
+                            {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
+                          </a>
+                        </Typography>
+                      )}
                     </Paper>
-                  )}
-                  {monthlyMortgage && (
-                    <Paper
-                      sx={{
-                        p: 2,
-                        boxShadow: 0,
-                        width: "100%",
-                        textAlign: "center",
-                        // backgroundColor: theme.palette.grey[100],
-                      }}
-                    >
-                      <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>
-                        Mortgage Estimate
+                    <Paper elevation={3} sx={{ p: 2, width: "100%" }}>
+                      <Typography fontWeight="bold" gutterBottom>
+                        {`${currentListing.StreetNumber || ""} ${
+                          currentListing.StreetName || ""
+                        } ${currentListing.StreetSuffix || ""}
+                  `}
                       </Typography>
-                      <Typography
-                        variant="h5"
-                        fontWeight="bold"
-                        sx={{ color: theme.palette.secondary[200] }}
-                      >
-                        ${monthlyMortgage}/month
+                      <Typography variant="body2">
+                        {`${currentListing.City || ""}, ${
+                          currentListing.StateOrProvince || ""
+                        } ${currentListing.PostalCode || ""}`}
                       </Typography>
-                      <Typography
-                        variant="caption"
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        Price: $
+                        {currentListing.ListPrice?.toLocaleString() || "N/A"}
+                      </Typography>
+                      <Stack spacing={0.5}>
+                        <Box display="flex" alignItems="center">
+                          <BedIcon fontSize="small" sx={{ mr: 1 }} />
+                          <Typography variant="body2">
+                            {currentListing.BedroomsTotal || 0} Bedrooms
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center">
+                          <BathtubIcon fontSize="small" sx={{ mr: 1 }} />
+                          <Typography variant="body2">
+                            {currentListing.BathroomsTotalInteger || 0}{" "}
+                            Bathrooms
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center">
+                          <SquareFootIcon fontSize="small" sx={{ mr: 1 }} />
+                          <Typography variant="body2">
+                            {currentListing.LivingArea || "N/A"} Sq. Ft.
+                          </Typography>
+                        </Box>
+                        {currentListing.YearBuilt && (
+                          <Box display="flex" alignItems="center">
+                            <CalendarMonthIcon
+                              fontSize="small"
+                              sx={{ mr: 1 }}
+                            />
+                            <Typography variant="body2">
+                              Built in {currentListing.YearBuilt}
+                            </Typography>
+                          </Box>
+                        )}
+                        {currentListing.LotSizeDimensions && (
+                          <Box display="flex" alignItems="center">
+                            <StraightenIcon fontSize="small" sx={{ mr: 1 }} />
+                            <Typography variant="body2">
+                              Lot Size: {currentListing.LotSizeDimensions}{" "}
+                              {currentListing.LotSizeUnits || ""}
+                            </Typography>
+                          </Box>
+                        )}
+                        {currentListing.StructureType?.[0] && (
+                          <Box display="flex" alignItems="center">
+                            <HomeIcon fontSize="small" sx={{ mr: 1 }} />
+                            <Typography variant="body2">
+                              Type: {currentListing.StructureType[0]}
+                            </Typography>
+                          </Box>
+                        )}
+                        {currentListing.ArchitecturalStyle?.[0] && (
+                          <Box display="flex" alignItems="center">
+                            <CategoryIcon fontSize="small" sx={{ mr: 1 }} />
+                            <Typography variant="body2">
+                              Style: {currentListing.ArchitecturalStyle[0]}
+                            </Typography>
+                          </Box>
+                        )}
+                        {currentListing.ParkingFeatures?.length > 0 && (
+                          <Box display="flex" alignItems="center">
+                            <DirectionsCarIcon
+                              fontSize="small"
+                              sx={{ mr: 1 }}
+                            />
+                            <Typography variant="body2">
+                              Parking:{" "}
+                              {currentListing.ParkingFeatures.join(", ")}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Paper>
+                    {weatherData && (
+                      <Paper
+                        elevation={3}
                         sx={{
-                          mt: 1,
-                          display: "block",
-                          color: theme.palette.text.secondary,
+                          p: 2,
+                          width: "100%",
+                          textAlign: "center",
                         }}
                       >
-                        Based on 20% down, 4.50% interest,
-                        <br />
-                        25-year amortization
-                      </Typography>
-                    </Paper>
-                  )}
+                        <img
+                          src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                          alt={weatherData.desc}
+                          style={{ width: 50, height: 50 }}
+                        />
+                        <Typography variant="h5" fontWeight="bold">
+                          {Math.round(weatherData.temp)}°C | {weatherData.desc}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          {weatherData.city}
+                        </Typography>
+                      </Paper>
+                    )}
+                    {monthlyMortgage && (
+                      <Paper
+                        elevation={3}
+                        sx={{
+                          p: 2,
+                          width: "100%",
+                          textAlign: "center",
+                          // backgroundColor: theme.palette.grey[100],
+                        }}
+                      >
+                        <Typography
+                          variant="h6"
+                          fontWeight="bold"
+                          sx={{ mb: 1 }}
+                        >
+                          Mortgage Estimate
+                        </Typography>
+                        <Typography
+                          variant="h5"
+                          fontWeight="bold"
+                          sx={{ color: theme.palette.secondary[200] }}
+                        >
+                          ${monthlyMortgage}/month
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            mt: 1,
+                            display: "block",
+                            color: theme.palette.text.secondary,
+                          }}
+                        >
+                          Based on 20% down, 4.50% interest,
+                          <br />
+                          25-year amortization
+                        </Typography>
+                      </Paper>
+                    )}
+                  </Stack>
                 </Grid>
 
                 {/* Column 2: Photo Grid */}
