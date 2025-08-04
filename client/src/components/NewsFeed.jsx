@@ -94,7 +94,7 @@ const NewsFeed = () => {
     <Paper
       sx={{
         p: 2,
-        backgroundColor: theme.palette.grey[100],
+        // backgroundColor: theme.palette.grey[100],
         width: "70%",
         boxShadow: 0,
       }}

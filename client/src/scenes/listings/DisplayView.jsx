@@ -281,12 +281,13 @@ const DisplayView = () => {
                     <Paper
                       sx={{
                         p: 2,
-                        // backgroundColor: "#fff",
-                        // color: "#000",
                         width: "100%",
-                        textAlign: "center",
+                        textAlign: "left",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        boxShadow: 0,
                       }}
-                      elevation={3}
                     >
                       <Avatar
                         alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
@@ -296,18 +297,18 @@ const DisplayView = () => {
                         }
                         sx={{ width: 100, height: 100, mb: 1 }}
                       />
-                      <Typography fontWeight="bold">
+                      <Typography fontWeight="bold" fontSize="1.2rem">
                         {`${agentInfo?.MemberFirstName || ""} ${
                           agentInfo?.MemberLastName || ""
                         }`}
                       </Typography>
-                      <Typography variant="body2">
+                      {/* <Typography variant="body2">
                         {agentInfo?.JobTitle || "Real Estate Agent"}
-                      </Typography>
-                      <Typography variant="body2">
+                      </Typography> */}
+                      <Typography variant="body2" fontSize="1rem">
                         {agentInfo?.MemberOfficePhone || "Phone not available"}
                       </Typography>
-                      {agentInfo?.MemberSocialMedia?.[0]
+                      {/* {agentInfo?.MemberSocialMedia?.[0]
                         ?.SocialMediaUrlOrId && (
                         <Typography
                           variant="body2"
@@ -324,129 +325,145 @@ const DisplayView = () => {
                             {agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId}
                           </a>
                         </Typography>
-                      )}
+                      )} */}
                     </Paper>
-                    <Paper elevation={3} sx={{ p: 2, width: "100%" }}>
-                      <Typography fontWeight="bold" gutterBottom>
-                        {`${currentListing.StreetNumber || ""} ${
-                          currentListing.StreetName || ""
-                        } ${currentListing.StreetSuffix || ""}
+                    <Box sx={{ position: "relative", width: "100%" }}>
+                      <Paper sx={{ p: 2, width: "100%", boxShadow: 0 }}>
+                        <Typography
+                          variant="h6"
+                          fontWeight="bold"
+                          fontSize="2rem"
+                          gutterBottom
+                        >
+                          {`${currentListing.StreetNumber || ""} ${
+                            currentListing.StreetName || ""
+                          } ${currentListing.StreetSuffix || ""}
                   `}
-                      </Typography>
-                      <Typography variant="body2">
-                        {`${currentListing.City || ""}, ${
-                          currentListing.StateOrProvince || ""
-                        } ${currentListing.PostalCode || ""}`}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mb: 1 }}>
-                        Price: $
-                        {currentListing.ListPrice?.toLocaleString() || "N/A"}
-                      </Typography>
-                      <Stack spacing={0.5}>
-                        <Box display="flex" alignItems="center">
-                          <BedIcon fontSize="small" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            {currentListing.BedroomsTotal || 0} Bedrooms
-                          </Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center">
-                          <BathtubIcon fontSize="small" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            {currentListing.BathroomsTotalInteger || 0}{" "}
-                            Bathrooms
-                          </Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center">
-                          <SquareFootIcon fontSize="small" sx={{ mr: 1 }} />
-                          <Typography variant="body2">
-                            {currentListing.LivingArea || "N/A"} Sq. Ft.
-                          </Typography>
-                        </Box>
-                        {currentListing.YearBuilt && (
-                          <Box display="flex" alignItems="center">
-                            <CalendarMonthIcon
-                              fontSize="small"
-                              sx={{ mr: 1 }}
-                            />
-                            <Typography variant="body2">
-                              Built in {currentListing.YearBuilt}
-                            </Typography>
-                          </Box>
-                        )}
-                        {currentListing.LotSizeDimensions && (
-                          <Box display="flex" alignItems="center">
-                            <StraightenIcon fontSize="small" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
-                              Lot Size: {currentListing.LotSizeDimensions}{" "}
-                              {currentListing.LotSizeUnits || ""}
-                            </Typography>
-                          </Box>
-                        )}
-                        {currentListing.StructureType?.[0] && (
-                          <Box display="flex" alignItems="center">
-                            <HomeIcon fontSize="small" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
-                              Type: {currentListing.StructureType[0]}
-                            </Typography>
-                          </Box>
-                        )}
-                        {currentListing.ArchitecturalStyle?.[0] && (
-                          <Box display="flex" alignItems="center">
-                            <CategoryIcon fontSize="small" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
-                              Style: {currentListing.ArchitecturalStyle[0]}
-                            </Typography>
-                          </Box>
-                        )}
-                        {currentListing.ParkingFeatures?.length > 0 && (
-                          <Box display="flex" alignItems="center">
-                            <DirectionsCarIcon
-                              fontSize="small"
-                              sx={{ mr: 1 }}
-                            />
-                            <Typography variant="body2">
-                              Parking:{" "}
-                              {currentListing.ParkingFeatures.join(", ")}
-                            </Typography>
-                          </Box>
-                        )}
-                      </Stack>
-                    </Paper>
-                    {weatherData && (
-                      <Paper
-                        elevation={3}
-                        sx={{
-                          p: 2,
-                          width: "100%",
-                          textAlign: "center",
-                        }}
-                      >
-                        <img
-                          src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
-                          alt={weatherData.desc}
-                          style={{ width: 50, height: 50 }}
-                        />
-                        <Typography variant="h5" fontWeight="bold">
-                          {Math.round(weatherData.temp)}°C | {weatherData.desc}
                         </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {weatherData.city}
+                        <Typography variant="body2" fontSize="1.5rem">
+                          {`${currentListing.City || ""}, ${
+                            currentListing.StateOrProvince || ""
+                          } `}
                         </Typography>
+                        <Typography
+                          variant="h5"
+                          fontWeight="bold"
+                          fontSize="1.5rem"
+                          sx={{ mb: 1, mt: 1 }}
+                        >
+                          Price: $
+                          {currentListing.ListPrice?.toLocaleString() || "N/A"}
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          <Box display="flex" alignItems="center">
+                            <BedIcon fontSize="large" sx={{ mr: 1 }} />
+                            <Typography variant="body2" fontSize="1.4rem">
+                              {currentListing.BedroomsTotal || 0} Bedrooms
+                            </Typography>
+                          </Box>
+                          <Box display="flex" alignItems="center">
+                            <BathtubIcon fontSize="large" sx={{ mr: 1 }} />
+                            <Typography variant="body2" fontSize="1.4rem">
+                              {currentListing.BathroomsTotalInteger || 0}{" "}
+                              Bathrooms
+                            </Typography>
+                          </Box>
+                          <Box display="flex" alignItems="center">
+                            <SquareFootIcon fontSize="large" sx={{ mr: 1 }} />
+                            <Typography variant="body2" fontSize="1.4rem">
+                              {currentListing.LivingArea || "N/A"} Sq. Ft.
+                            </Typography>
+                          </Box>
+                          {currentListing.YearBuilt && (
+                            <Box display="flex" alignItems="center">
+                              <CalendarMonthIcon
+                                fontSize="large"
+                                sx={{ mr: 1 }}
+                              />
+                              <Typography variant="body2" fontSize="1.4rem">
+                                Built in {currentListing.YearBuilt}
+                              </Typography>
+                            </Box>
+                          )}
+                          {currentListing.LotSizeDimensions && (
+                            <Box display="flex" alignItems="center">
+                              <StraightenIcon fontSize="large" sx={{ mr: 1 }} />
+                              <Typography variant="body2" fontSize="1.4rem">
+                                Lot Size: {currentListing.LotSizeDimensions}{" "}
+                                {currentListing.LotSizeUnits || ""}
+                              </Typography>
+                            </Box>
+                          )}
+                          {currentListing.StructureType?.[0] && (
+                            <Box display="flex" alignItems="center">
+                              <HomeIcon fontSize="large" sx={{ mr: 1 }} />
+                              <Typography variant="body2" fontSize="1.4rem">
+                                Type: {currentListing.StructureType[0]}
+                              </Typography>
+                            </Box>
+                          )}
+                          {currentListing.ArchitecturalStyle?.[0] && (
+                            <Box display="flex" alignItems="center">
+                              <CategoryIcon fontSize="large" sx={{ mr: 1 }} />
+                              <Typography variant="body2" fontSize="1.4rem">
+                                Style: {currentListing.ArchitecturalStyle[0]}
+                              </Typography>
+                            </Box>
+                          )}
+                          {currentListing.ParkingFeatures?.length > 0 && (
+                            <Box display="flex" alignItems="center">
+                              <DirectionsCarIcon
+                                fontSize="large"
+                                sx={{ mr: 1 }}
+                              />
+                              <Typography variant="body2" fontSize="1.4rem">
+                                Parking:{" "}
+                                {currentListing.ParkingFeatures.join(", ")}
+                              </Typography>
+                            </Box>
+                          )}
+                        </Stack>
                       </Paper>
-                    )}
+                      {weatherData && (
+                        <Paper
+                          sx={{
+                            p: 2,
+                            textAlign: "center",
+                            position: "absolute",
+                            top: 16,
+                            right: 16,
+                            boxShadow: 0,
+                          }}
+                        >
+                          <img
+                            src={`https://openweathermap.org/img/wn/${weatherData.icon}@2x.png`}
+                            alt={weatherData.desc}
+                            style={{ width: 50, height: 50 }}
+                          />
+                          <Typography variant="h5" fontWeight="bold">
+                            {Math.round(weatherData.temp)}°C |{" "}
+                            {weatherData.desc}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {weatherData.city}
+                          </Typography>
+                        </Paper>
+                      )}
+                    </Box>
                     {monthlyMortgage && (
                       <Paper
-                        elevation={3}
                         sx={{
                           p: 2,
                           width: "100%",
                           textAlign: "center",
+                          boxShadow: 0,
                           // backgroundColor: theme.palette.grey[100],
                         }}
                       >
                         <Typography
                           variant="h6"
                           fontWeight="bold"
+                          fontSize="1.5rem"
                           sx={{ mb: 1 }}
                         >
                           Mortgage Estimate
@@ -454,6 +471,7 @@ const DisplayView = () => {
                         <Typography
                           variant="h5"
                           fontWeight="bold"
+                          fontSize="1.2rem"
                           sx={{ color: theme.palette.secondary[200] }}
                         >
                           ${monthlyMortgage}/month
@@ -464,6 +482,8 @@ const DisplayView = () => {
                             mt: 1,
                             display: "block",
                             color: theme.palette.text.secondary,
+
+                            fontSize: "0.8rem",
                           }}
                         >
                           Based on 20% down, 4.50% interest,
@@ -542,7 +562,7 @@ const DisplayView = () => {
                 pt: 2,
                 position: "relative",
                 zIndex: 3,
-                backgroundColor: theme.palette.grey[100],
+                // backgroundColor: theme.palette.grey[100],
               }}
             >
               <Box
@@ -573,7 +593,7 @@ const DisplayView = () => {
                     p: 2,
                     textAlign: "center",
                     boxShadow: 0,
-                    backgroundColor: theme.palette.grey[100],
+                    // backgroundColor: theme.palette.grey[100],
                   }}
                 >
                   <Box sx={{ display: "flex", justifyContent: "center" }}>
