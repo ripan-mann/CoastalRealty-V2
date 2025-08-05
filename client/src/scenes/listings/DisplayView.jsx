@@ -10,6 +10,7 @@ import {
   useTheme,
   useMediaQuery,
   Stack,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
@@ -333,6 +334,9 @@ const DisplayView = () => {
                         </Box>
                       )}
                     </Paper>
+                    <Divider
+                      sx={{ bgcolor: theme.palette.grey[200], height: 2 }}
+                    />
                     <Box sx={{ position: "relative", width: "100%" }}>
                       <Paper
                         sx={{
@@ -341,6 +345,8 @@ const DisplayView = () => {
                           pb: 0,
                           width: "100%",
                           boxShadow: 0,
+                          mt: 3,
+                          mb: 6,
                         }}
                       >
                         <Typography
@@ -360,36 +366,24 @@ const DisplayView = () => {
                             currentListing.StateOrProvince || ""
                           } `}
                         </Typography>
-                        <Typography
-                          variant="h5"
-                          fontWeight="bold"
-                          fontSize="1.7rem"
-                          sx={{
-                            mb: 1,
-                            mt: 1,
-                            color: theme.palette.secondary[200],
-                          }}
-                        >
-                          Price: $
-                          {currentListing.ListPrice?.toLocaleString() || "N/A"}
-                        </Typography>
-                        <Stack spacing={0.5}>
+
+                        <Stack spacing={0.5} mt={4}>
                           <Box display="flex" alignItems="center">
                             <BedIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2" fontSize="1.5rem">
+                            <Typography variant="body2" fontSize="1.7rem">
                               {currentListing.BedroomsTotal || 0} Bedrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <BathtubIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2" fontSize="1.5rem">
+                            <Typography variant="body2" fontSize="1.7rem">
                               {currentListing.BathroomsTotalInteger || 0}{" "}
                               Bathrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <SquareFootIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2" fontSize="1.5rem">
+                            <Typography variant="body2" fontSize="1.7rem">
                               {currentListing.LivingArea || "N/A"} Sq. Ft.
                             </Typography>
                           </Box>
@@ -399,7 +393,7 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography variant="body2" fontSize="1.5rem">
+                              <Typography variant="body2" fontSize="1.7rem">
                                 Built in {currentListing.YearBuilt}
                               </Typography>
                             </Box>
@@ -407,7 +401,7 @@ const DisplayView = () => {
                           {currentListing.LotSizeDimensions && (
                             <Box display="flex" alignItems="center">
                               <StraightenIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2" fontSize="1.5rem">
+                              <Typography variant="body2" fontSize="1.7rem">
                                 Lot Size: {currentListing.LotSizeDimensions}{" "}
                                 {currentListing.LotSizeUnits || ""}
                               </Typography>
@@ -416,7 +410,7 @@ const DisplayView = () => {
                           {currentListing.StructureType?.[0] && (
                             <Box display="flex" alignItems="center">
                               <HomeIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2" fontSize="1.5rem">
+                              <Typography variant="body2" fontSize="1.7rem">
                                 Type: {currentListing.StructureType[0]}
                               </Typography>
                             </Box>
@@ -424,7 +418,7 @@ const DisplayView = () => {
                           {currentListing.ArchitecturalStyle?.[0] && (
                             <Box display="flex" alignItems="center">
                               <CategoryIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2" fontSize="1.5rem">
+                              <Typography variant="body2" fontSize="1.7rem">
                                 Style: {currentListing.ArchitecturalStyle[0]}
                               </Typography>
                             </Box>
@@ -435,13 +429,26 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography variant="body2" fontSize="1.5rem">
+                              <Typography variant="body2" fontSize="1.7rem">
                                 Parking:{" "}
                                 {currentListing.ParkingFeatures.join(", ")}
                               </Typography>
                             </Box>
                           )}
                         </Stack>
+                        <Typography
+                          variant="h5"
+                          fontWeight="bold"
+                          fontSize="1.8rem"
+                          sx={{
+                            mb: 1,
+                            mt: 4,
+                            color: theme.palette.secondary[200],
+                          }}
+                        >
+                          Price: $
+                          {currentListing.ListPrice?.toLocaleString() || "N/A"}
+                        </Typography>
                       </Paper>
                       {weatherData && (
                         <Paper
