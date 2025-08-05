@@ -7,6 +7,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import ddfRoutes from "./routes/ddf.js";
 import newsRoutes from "./routes/news.js";
+import newsSummaryRoutes from "./routes/newsSummary.js";
 
 // CONFIGURATION
 dotenv.config();
@@ -23,6 +24,7 @@ app.use(cors());
 /*Routes*/
 app.use("/api/ddf", ddfRoutes); /*ddf*/
 app.use("/api/news", newsRoutes); /*news*/
+app.use("/api/news-summary", newsSummaryRoutes); /*news summary*/
 
 /*Mongoose Setup*/
 const PORT = process.env.PORT; // Default port if not specified in .env

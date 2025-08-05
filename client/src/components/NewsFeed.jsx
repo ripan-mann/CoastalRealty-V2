@@ -2,11 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Paper, Typography, Box } from "@mui/material";
 
 const FEED_ENDPOINT = "/api/news";
+const SUMMARY_ENDPOINT = "/api/news-summary";
 
-const stripHTML = (html) => {
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = html;
-  return tempDiv.textContent || tempDiv.innerText || "";
+const removeSourceSuffix = (text, source) => {
+  if (!text || !source) return text;
+  const suffix = ` - ${source}`;
+  return text.endsWith(suffix) ? text.slice(0, -suffix.length) : text;
 };
 
 const NewsFeed = () => {
@@ -30,32 +31,50 @@ const NewsFeed = () => {
           5
         );
 
-        const parsedItems = itemsArray.map((item) => {
-          const title = item.querySelector("title")?.textContent || "No title";
-          const link = item.querySelector("link")?.textContent || "#";
-          const rawDescription =
-            item.querySelector("description")?.textContent || "";
-          const tempDiv = document.createElement("div");
-          tempDiv.innerHTML = rawDescription;
-          const description =
-            tempDiv.querySelector("a")?.textContent ||
-            stripHTML(rawDescription);
+        const parsedItems = await Promise.all(
+          itemsArray.map(async (item) => {
+            const title =
+              item.querySelector("title")?.textContent || "No title";
+            const link = item.querySelector("link")?.textContent || "#";
+            const source = (
+              item.querySelector("source")?.textContent || "Unknown"
+            ).trim();
+            const pubDate = item.querySelector("pubDate")?.textContent || "";
+            const cleanTitle = removeSourceSuffix(title, source).trim();
 
-          const source =
-            item.querySelector("source")?.textContent ||
-            tempDiv.querySelector("font")?.textContent ||
-            "Unknown";
+            let description = "";
+            try {
+              const summaryRes = await fetch(SUMMARY_ENDPOINT, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ title }),
+              });
 
-          const pubDate = item.querySelector("pubDate")?.textContent || "";
+              if (summaryRes.ok) {
+                const data = await summaryRes.json();
+                description = data.description || "";
+              } else {
+                description = "Summary unavailable.";
+              }
+            } catch (e) {
+              description = "Summary unavailable.";
+            }
+            const cleanDescription = removeSourceSuffix(
+              description.trim(),
+              source
+            );
 
-          return {
-            title,
-            link,
-            description: description.trim(),
-            source,
-            pubDate,
-          };
-        });
+            return {
+              title: cleanTitle,
+              link,
+              description: cleanDescription,
+              source,
+              pubDate,
+            };
+          })
+        );
 
         setItems(parsedItems);
       } catch (err) {
@@ -110,12 +129,12 @@ const NewsFeed = () => {
             fontSize: "1.5rem",
           }}
         >
-          {current.description}
+          {current.title}
         </a>
       </Typography>
-      {/* <Typography variant="body2" gutterBottom>
+      <Typography variant="body2" fontSize="1rem" gutterBottom>
         {current.description}
-      </Typography> */}
+      </Typography>
       <Box
         sx={{
           display: "flex",

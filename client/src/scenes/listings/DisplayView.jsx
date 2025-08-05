@@ -63,7 +63,7 @@ const DisplayView = () => {
   );
   const column1Width = isLargeScreen ? "25%" : "30%";
   const column2Width = isLargeScreen ? "75%" : "70%";
-  const photoGridHeight = isLargeScreen ? "76vh" : "75vh";
+  const photoGridHeight = isLargeScreen ? "78vh" : "78vh";
   const logoMaxHeight = isLargeScreen ? 220 : 150;
 
   const fetchProperties = async () => {
