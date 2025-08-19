@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Box, useMediaQuery } from "@mui/material";
+import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
 // import { useSelector } from "react-redux";
 // import Navbar from "components/Navbar";
@@ -7,17 +7,20 @@ import Sidebar from "components/Sidebar";
 // import { useGetUserQuery } from "state/api";
 
 const Layout = () => {
-  const isNonMobile = useMediaQuery("(min-width: 600px)");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNavbarVisible, setIsNavbarVisible] = useState(true);
   // const userId = useSelector((state) => state.global.userId);
   // const { data } = useGetUserQuery(userId);
 
   return (
-    <Box display={isNonMobile ? "flex" : "block"} width="100%" height="100%">
+    <Box
+      display="flex"
+      flexDirection={{ xs: "column", md: "row" }}
+      width="100%"
+      height="100%"
+    >
       <Sidebar
         // user={data || {}}
-        isNonMobile={isNonMobile}
         drawerWidth="250px"
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}

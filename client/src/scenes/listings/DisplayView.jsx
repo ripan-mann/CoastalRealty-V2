@@ -8,7 +8,6 @@ import {
   Fade,
   IconButton,
   useTheme,
-  useMediaQuery,
   Stack,
   Divider,
 } from "@mui/material";
@@ -59,13 +58,6 @@ const DisplayView = () => {
   const [weatherData, setWeatherData] = useState(null);
   const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
-  const isLargeScreen = useMediaQuery(
-    "(min-width:1500px) and (min-height:1200px)"
-  );
-  const column1Width = isLargeScreen ? "25%" : "30%";
-  const column2Width = isLargeScreen ? "75%" : "70%";
-  const photoGridHeight = isLargeScreen ? "78vh" : "78vh";
-  const logoMaxHeight = isLargeScreen ? 220 : 150;
 
   const fetchProperties = async () => {
     const data = await getProperties(displayedListingKeysRef.current);
@@ -267,15 +259,15 @@ const DisplayView = () => {
               <Grid
                 container
                 sx={{
-                  flexWrap: "nowrap",
+                  flexWrap: { xs: "wrap", md: "nowrap" },
                 }}
               >
                 {/* Column 1: Agent Info, Property Info, QR Code */}
                 <Grid
                   item
                   sx={{
-                    minWidth: column1Width,
-                    maxWidth: column1Width,
+                    minWidth: { xs: "100%", md: "30%", lg: "25%" },
+                    maxWidth: { xs: "100%", md: "30%", lg: "25%" },
                   }}
                 >
                   <Stack spacing={2}>
@@ -680,9 +672,9 @@ const DisplayView = () => {
                 <Grid
                   item
                   sx={{
-                    minWidth: column2Width,
-                    maxWidth: column2Width,
-                    height: photoGridHeight,
+                    minWidth: { xs: "100%", md: "70%", lg: "75%" },
+                    maxWidth: { xs: "100%", md: "70%", lg: "75%" },
+                    height: { xs: "60vh", md: "70vh", lg: "78vh" },
                     overflow: "hidden",
                     pr: 2,
                     zIndex: 99,
@@ -758,10 +750,11 @@ const DisplayView = () => {
                 }}
               >
                 <Box>
-                  <img
+                  <Box
+                    component="img"
                     src={realtyImage}
                     alt="Century 21 Logo"
-                    style={{ maxHeight: logoMaxHeight }}
+                    sx={{ maxHeight: { xs: 150, lg: 220 } }}
                   />
                 </Box>
 
