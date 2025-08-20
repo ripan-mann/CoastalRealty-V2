@@ -258,7 +258,14 @@ const DisplayView = () => {
             <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
               <Grid container spacing={2} wrap="nowrap">
                 {/* Column 1: Agent Info, Property Info, QR Code */}
-                <Grid item xs={5} md={5} lg={5} sx={{ flexShrink: 0 }}>
+                <Grid
+                  item
+                  sx={{
+                    flexShrink: 0,
+                    flexBasis: { xs: "100%", md: "25%" },
+                    maxWidth: { xs: "100%", md: "25%" },
+                  }}
+                >
                   <Stack spacing={2} sx={{ width: "100%" }}>
                     <Paper
                       sx={{
@@ -505,10 +512,10 @@ const DisplayView = () => {
                 {/* Column 2: Photo Grid */}
                 <Grid
                   item
-                  xs={7}
-                  md={7}
-                  lg={7}
                   sx={{
+                    flexGrow: 1,
+                    flexBasis: { xs: "100%", md: "75%" },
+                    maxWidth: { xs: "100%", md: "75%" },
                     height: { xs: "60vh", md: "70vh", lg: "78vh" },
                     overflow: "hidden",
                     pr: 2,
