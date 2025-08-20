@@ -258,7 +258,7 @@ const DisplayView = () => {
             <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
               <Grid container spacing={2} wrap="nowrap">
                 {/* Column 1: Agent Info, Property Info, QR Code */}
-                <Grid item xs={5} md={5} lg={5}>
+                <Grid item xs={5} md={5} lg={5} sx={{ flexShrink: 0 }}>
                   <Stack spacing={2} sx={{ width: "100%" }}>
                     <Paper
                       sx={{
@@ -491,14 +491,6 @@ const DisplayView = () => {
                             mt: 1,
                             display: "block",
                             color: theme.palette.text.secondary,
-
-                            fontSize: {
-                              xs: "0.2rem",
-                              sm: "0.5rem",
-                              md: "0.8rem",
-                              lg: "1rem",
-                              xl: "1.2rem",
-                            },
                           }}
                         >
                           Based on 20% down, 4.50% interest,
