@@ -142,7 +142,7 @@ const DisplayView = () => {
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.msExitFullscreen) document.msExitFullscreen();
 
-      setIsSidebarOpen(false); // 👈 show sidebar
+      setIsSidebarOpen(true); // 👈 show sidebar
       setIsNavbarVisible(true); // 👈 show navbar
     }
 
@@ -256,21 +256,10 @@ const DisplayView = () => {
           >
             {/* Row 1: Agent and Photos */}
             <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
-              <Grid
-                container
-                sx={{
-                  flexWrap: { xs: "wrap", md: "nowrap" },
-                }}
-              >
+              <Grid container spacing={2}>
                 {/* Column 1: Agent Info, Property Info, QR Code */}
-                <Grid
-                  item
-                  sx={{
-                    minWidth: { xs: "100%", md: "30%", lg: "25%" },
-                    maxWidth: { xs: "100%", md: "30%", lg: "25%" },
-                  }}
-                >
-                  <Stack spacing={2}>
+                <Grid item xs={12} md={3} lg={3}>
+                  <Stack spacing={2} sx={{ width: "100%" }}>
                     <Paper
                       sx={{
                         p: 2,
@@ -671,9 +660,10 @@ const DisplayView = () => {
                 {/* Column 2: Photo Grid */}
                 <Grid
                   item
+                  xs={12}
+                  md={9}
+                  lg={9}
                   sx={{
-                    minWidth: { xs: "100%", md: "70%", lg: "75%" },
-                    maxWidth: { xs: "100%", md: "70%", lg: "75%" },
                     height: { xs: "60vh", md: "70vh", lg: "78vh" },
                     overflow: "hidden",
                     pr: 2,
