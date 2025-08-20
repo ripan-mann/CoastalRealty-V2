@@ -256,7 +256,7 @@ const DisplayView = () => {
           >
             {/* Row 1: Agent and Photos */}
             <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
-              <Grid container spacing={2} wrap="nowrap">
+              <Grid container spacing={2} wrap="nowrap" sx={{ height: "100%" }}>
                 {/* Column 1: Agent Info, Property Info, QR Code */}
                 <Grid
                   item
@@ -295,7 +295,7 @@ const DisplayView = () => {
                         />
                         <Typography
                           fontWeight="bold"
-                          variant="h6"
+                          variant="h4"
                           sx={{ color: theme.palette.secondary[200] }}
                         >
                           {`${agentInfo?.MemberFirstName || ""} ${
@@ -305,7 +305,7 @@ const DisplayView = () => {
                         {/* <Typography variant="body2">
                         {agentInfo?.JobTitle || "Real Estate Agent"}
                       </Typography> */}
-                        <Typography variant="body2">
+                        <Typography variant="body1">
                           {agentInfo?.MemberOfficePhone ||
                             "Phone not available"}
                         </Typography>
@@ -338,7 +338,7 @@ const DisplayView = () => {
                         }}
                       >
                         <Typography
-                          variant="h6"
+                          variant="h3"
                           fontWeight="bold"
                           gutterBottom
                           sx={{
@@ -349,7 +349,7 @@ const DisplayView = () => {
                             currentListing.StreetName || ""
                           } ${currentListing.StreetSuffix || ""}`}
                         </Typography>
-                        <Typography variant="body2">
+                        <Typography variant="body1">
                           {`${currentListing.City || ""}, ${
                             currentListing.StateOrProvince || ""
                           } `}
@@ -358,20 +358,20 @@ const DisplayView = () => {
                         <Stack spacing={0.5} mt={4}>
                           <Box display="flex" alignItems="center">
                             <BedIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
+                            <Typography variant="h4">
                               {currentListing.BedroomsTotal || 0} Bedrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <BathtubIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
+                            <Typography variant="h4" pt={1}>
                               {currentListing.BathroomsTotalInteger || 0}{" "}
                               Bathrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <SquareFootIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography variant="body2">
+                            <Typography variant="h4" pt={1}>
                               {currentListing.LivingArea || "N/A"} Sq. Ft.
                             </Typography>
                           </Box>
@@ -381,7 +381,7 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography variant="body2">
+                              <Typography variant="h4" pt={1}>
                                 Built in {currentListing.YearBuilt}
                               </Typography>
                             </Box>
@@ -389,7 +389,7 @@ const DisplayView = () => {
                           {currentListing.LotSizeDimensions && (
                             <Box display="flex" alignItems="center">
                               <StraightenIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2">
+                              <Typography variant="h4" pt={1}>
                                 Lot Size: {currentListing.LotSizeDimensions}{" "}
                                 {currentListing.LotSizeUnits || ""}
                               </Typography>
@@ -398,7 +398,7 @@ const DisplayView = () => {
                           {currentListing.StructureType?.[0] && (
                             <Box display="flex" alignItems="center">
                               <HomeIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2">
+                              <Typography variant="h4" pt={1}>
                                 Type: {currentListing.StructureType[0]}
                               </Typography>
                             </Box>
@@ -406,7 +406,7 @@ const DisplayView = () => {
                           {currentListing.ArchitecturalStyle?.[0] && (
                             <Box display="flex" alignItems="center">
                               <CategoryIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography variant="body2">
+                              <Typography variant="h4" pt={1}>
                                 Style: {currentListing.ArchitecturalStyle[0]}
                               </Typography>
                             </Box>
@@ -417,7 +417,7 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography variant="body2">
+                              <Typography variant="h4" pt={1}>
                                 Parking:{" "}
                                 {currentListing.ParkingFeatures.join(", ")}
                               </Typography>
@@ -425,7 +425,7 @@ const DisplayView = () => {
                           )}
                         </Stack>
                         <Typography
-                          variant="h5"
+                          variant="h3"
                           fontWeight="bold"
                           sx={{
                             mb: 1,
@@ -467,7 +467,6 @@ const DisplayView = () => {
                       <Paper
                         sx={{
                           p: 2,
-                          pt: 5,
                           width: "100%",
                           textAlign: "center",
                           boxShadow: 0,
@@ -475,7 +474,7 @@ const DisplayView = () => {
                         }}
                       >
                         <Typography
-                          variant="h6"
+                          variant="h3"
                           fontWeight="bold"
                           sx={{
                             mb: 1,
@@ -484,7 +483,7 @@ const DisplayView = () => {
                           Mortgage Estimate
                         </Typography>
                         <Typography
-                          variant="h5"
+                          variant="h4"
                           fontWeight="bold"
                           sx={{
                             color: theme.palette.secondary[200],
@@ -574,7 +573,6 @@ const DisplayView = () => {
             <Grid
               item
               sx={{
-                pt: 2,
                 position: "relative",
                 zIndex: 3,
                 mt: "auto",
@@ -597,7 +595,7 @@ const DisplayView = () => {
                     component="img"
                     src={realtyImage}
                     alt="Century 21 Logo"
-                    sx={{ maxHeight: { xs: 150, lg: 220 } }}
+                    sx={{ maxHeight: { xs: 150, lg: 180 } }}
                   />
                 </Box>
 
@@ -607,7 +605,7 @@ const DisplayView = () => {
                   sx={{
                     mr: 8,
                     ml: 8,
-                    p: 2,
+                    // p: 2,
                     textAlign: "center",
                     boxShadow: 0,
                     // backgroundColor: theme.palette.grey[100],
@@ -616,7 +614,7 @@ const DisplayView = () => {
                   <Box sx={{ display: "flex", justifyContent: "center" }}>
                     <QRCodeCanvas
                       value={`https://${currentListing.ListingURL}`}
-                      size={150}
+                      size={120}
                       style={{
                         backgroundColor: theme.palette.background.primary,
                       }}
