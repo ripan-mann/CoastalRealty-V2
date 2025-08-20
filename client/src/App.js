@@ -1,5 +1,5 @@
 import { CssBaseline, ThemeProvider } from "@mui/material";
-import { createTheme } from "@mui/material/styles";
+import { createTheme, responsiveFontSizes } from "@mui/material/styles";
 import { Routes } from "react-router-dom";
 import { themeSettings } from "theme";
 import Layout from "scenes/layout";
@@ -13,7 +13,10 @@ import useWakeLock from "./hooks/useWakeLock";
 function App() {
   useWakeLock();
   const mode = useSelector((state) => state.global.mode);
-  const theme = useMemo(() => createTheme(themeSettings(mode)), [mode]);
+  const theme = useMemo(
+    () => responsiveFontSizes(createTheme(themeSettings(mode))),
+    [mode]
+  );
   return (
     <div className="app">
       <BrowserRouter>

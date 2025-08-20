@@ -288,16 +288,8 @@ const DisplayView = () => {
                         />
                         <Typography
                           fontWeight="bold"
-                          sx={{
-                            color: theme.palette.secondary[200],
-                            fontSize: {
-                              xs: "0.5rem",
-                              sm: "0.8rem",
-                              md: "1rem",
-                              lg: "1.2rem",
-                              xl: "1.7rem",
-                            },
-                          }}
+                          variant="h6"
+                          sx={{ color: theme.palette.secondary[200] }}
                         >
                           {`${agentInfo?.MemberFirstName || ""} ${
                             agentInfo?.MemberLastName || ""
@@ -306,18 +298,7 @@ const DisplayView = () => {
                         {/* <Typography variant="body2">
                         {agentInfo?.JobTitle || "Real Estate Agent"}
                       </Typography> */}
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: {
-                              xs: "0.5rem",
-                              sm: "0.5rem",
-                              md: "0.8rem",
-                              lg: "1rem",
-                              xl: "1rem",
-                            },
-                          }}
-                        >
+                        <Typography variant="body2">
                           {agentInfo?.MemberOfficePhone ||
                             "Phone not available"}
                         </Typography>
@@ -355,32 +336,13 @@ const DisplayView = () => {
                           gutterBottom
                           sx={{
                             color: theme.palette.secondary[200],
-                            fontSize: {
-                              xs: "1rem",
-                              sm: "1.2rem",
-                              md: "1.5rem",
-                              lg: "2rem",
-                              xl: "2.5rem",
-                            },
                           }}
                         >
                           {`${currentListing.StreetNumber || ""} ${
                             currentListing.StreetName || ""
-                          } ${currentListing.StreetSuffix || ""}
-                  `}
+                          } ${currentListing.StreetSuffix || ""}`}
                         </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontSize: {
-                              xs: "0.5rem",
-                              sm: "0.8rem",
-                              md: "1rem",
-                              lg: "1.2rem",
-                              xl: "1.7rem",
-                            },
-                          }}
-                        >
+                        <Typography variant="body2">
                           {`${currentListing.City || ""}, ${
                             currentListing.StateOrProvince || ""
                           } `}
@@ -389,53 +351,20 @@ const DisplayView = () => {
                         <Stack spacing={0.5} mt={4}>
                           <Box display="flex" alignItems="center">
                             <BedIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontSize: {
-                                  xs: "0.5rem",
-                                  sm: "0.8rem",
-                                  md: "1rem",
-                                  lg: "1.2rem",
-                                  xl: "1.7rem",
-                                },
-                              }}
-                            >
+                            <Typography variant="body2">
                               {currentListing.BedroomsTotal || 0} Bedrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <BathtubIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontSize: {
-                                  xs: "0.5rem",
-                                  sm: "0.8rem",
-                                  md: "1rem",
-                                  lg: "1.2rem",
-                                  xl: "1.7rem",
-                                },
-                              }}
-                            >
+                            <Typography variant="body2">
                               {currentListing.BathroomsTotalInteger || 0}{" "}
                               Bathrooms
                             </Typography>
                           </Box>
                           <Box display="flex" alignItems="center">
                             <SquareFootIcon fontSize="large" sx={{ mr: 1 }} />
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontSize: {
-                                  xs: "0.5rem",
-                                  sm: "0.8rem",
-                                  md: "1rem",
-                                  lg: "1.2rem",
-                                  xl: "1.7rem",
-                                },
-                              }}
-                            >
+                            <Typography variant="body2">
                               {currentListing.LivingArea || "N/A"} Sq. Ft.
                             </Typography>
                           </Box>
@@ -445,18 +374,7 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: {
-                                    xs: "0.5rem",
-                                    sm: "0.8rem",
-                                    md: "1rem",
-                                    lg: "1.2rem",
-                                    xl: "1.7rem",
-                                  },
-                                }}
-                              >
+                              <Typography variant="body2">
                                 Built in {currentListing.YearBuilt}
                               </Typography>
                             </Box>
@@ -464,18 +382,7 @@ const DisplayView = () => {
                           {currentListing.LotSizeDimensions && (
                             <Box display="flex" alignItems="center">
                               <StraightenIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: {
-                                    xs: "0.5rem",
-                                    sm: "0.8rem",
-                                    md: "1rem",
-                                    lg: "1.2rem",
-                                    xl: "1.7rem",
-                                  },
-                                }}
-                              >
+                              <Typography variant="body2">
                                 Lot Size: {currentListing.LotSizeDimensions}{" "}
                                 {currentListing.LotSizeUnits || ""}
                               </Typography>
@@ -484,18 +391,7 @@ const DisplayView = () => {
                           {currentListing.StructureType?.[0] && (
                             <Box display="flex" alignItems="center">
                               <HomeIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: {
-                                    xs: "0.5rem",
-                                    sm: "0.8rem",
-                                    md: "1rem",
-                                    lg: "1.2rem",
-                                    xl: "1.7rem",
-                                  },
-                                }}
-                              >
+                              <Typography variant="body2">
                                 Type: {currentListing.StructureType[0]}
                               </Typography>
                             </Box>
@@ -503,18 +399,7 @@ const DisplayView = () => {
                           {currentListing.ArchitecturalStyle?.[0] && (
                             <Box display="flex" alignItems="center">
                               <CategoryIcon fontSize="large" sx={{ mr: 1 }} />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: {
-                                    xs: "0.5rem",
-                                    sm: "0.8rem",
-                                    md: "1rem",
-                                    lg: "1.2rem",
-                                    xl: "1.7rem",
-                                  },
-                                }}
-                              >
+                              <Typography variant="body2">
                                 Style: {currentListing.ArchitecturalStyle[0]}
                               </Typography>
                             </Box>
@@ -525,18 +410,7 @@ const DisplayView = () => {
                                 fontSize="large"
                                 sx={{ mr: 1 }}
                               />
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontSize: {
-                                    xs: "0.5rem",
-                                    sm: "0.8rem",
-                                    md: "1rem",
-                                    lg: "1.2rem",
-                                    xl: "1.7rem",
-                                  },
-                                }}
-                              >
+                              <Typography variant="body2">
                                 Parking:{" "}
                                 {currentListing.ParkingFeatures.join(", ")}
                               </Typography>
@@ -550,13 +424,6 @@ const DisplayView = () => {
                             mb: 1,
                             mt: 4,
                             color: theme.palette.secondary[200],
-                            fontSize: {
-                              xs: "0.5rem",
-                              sm: "0.8rem",
-                              md: "1rem",
-                              lg: "1.2rem",
-                              xl: "1.7rem",
-                            },
                           }}
                         >
                           Price: $
@@ -605,13 +472,6 @@ const DisplayView = () => {
                           fontWeight="bold"
                           sx={{
                             mb: 1,
-                            fontSize: {
-                              xs: "0.5rem",
-                              sm: "0.8rem",
-                              md: "1rem",
-                              lg: "1.2rem",
-                              xl: "1.7rem",
-                            },
                           }}
                         >
                           Mortgage Estimate
@@ -621,13 +481,6 @@ const DisplayView = () => {
                           fontWeight="bold"
                           sx={{
                             color: theme.palette.secondary[200],
-                            fontSize: {
-                              xs: "0.8rem",
-                              sm: "1rem",
-                              md: "1.2rem",
-                              lg: "1.5rem",
-                              xl: "1.7rem",
-                            },
                           }}
                         >
                           ${monthlyMortgage}/month
