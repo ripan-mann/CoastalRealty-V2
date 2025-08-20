@@ -134,11 +134,11 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
         {drawerContent}
       </Drawer>
       <Drawer
-        open
+        open={isSidebarOpen}
         variant="permanent"
         anchor="left"
         sx={{
-          display: { xs: "none", md: "block" },
+          display: { xs: "none", md: isSidebarOpen ? "block" : "none" },
           width: drawerWidth,
           "& .MuiDrawer-paper": {
             color: theme.palette.secondary[200],
