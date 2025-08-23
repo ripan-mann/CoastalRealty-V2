@@ -21,6 +21,7 @@ router.get("/member/:agentKey", async (req, res) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: 10000,
       }
     );
 
@@ -47,6 +48,7 @@ router.get("/openh/:listingKey", async (req, res) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: 10000,
       }
     );
 
@@ -66,6 +68,7 @@ router.get("/openh", async (req, res) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: 10000,
       }
     );
 
@@ -81,7 +84,7 @@ router.get("/properties", async (req, res) => {
     const exclude = String(req.query.exclude || "")
       .split(",")
       .map((k) => k.trim())
-      .filter((k) => k);
+      .filter((k) => /^\d+$/.test(k));
     const token = await getAccessToken();
 
     const top = 100;
@@ -94,6 +97,7 @@ router.get("/properties", async (req, res) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        timeout: 15000,
       });
       const batch = Array.isArray(response.data.value)
         ? response.data.value

@@ -9,6 +9,10 @@ const getAccessToken = async () => {
     return cachedToken;
   }
 
+  if (!process.env.CREA_CLIENT_ID || !process.env.CREA_CLIENT_SECRET || !process.env.CREA_GRANT_TYPE || !process.env.CREA_SCOPE) {
+    throw new Error("Missing CREA API credentials in environment");
+  }
+
   const response = await axios.post(
     "https://identity.crea.ca/connect/token",
     new URLSearchParams({
@@ -21,6 +25,7 @@ const getAccessToken = async () => {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
+      timeout: 10000,
     }
   );
 

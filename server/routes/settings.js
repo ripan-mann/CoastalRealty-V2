@@ -1,5 +1,6 @@
 import express from "express";
 import DisplaySettings from "../models/DisplaySettings.js";
+import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.get("/display", async (_req, res) => {
   }
 });
 
-router.put("/display", async (req, res) => {
+router.put("/display", requireAdmin, async (req, res) => {
   try {
     let { listingSwitchMs, photoRotateMs, uploadedRotateMs } = req.body || {};
 
@@ -60,4 +61,3 @@ router.put("/display", async (req, res) => {
 });
 
 export default router;
-

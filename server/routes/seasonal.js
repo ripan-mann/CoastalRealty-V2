@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import SeasonalImage from "../models/SeasonalImage.js";
 import AiGenAttempt from "../models/AiGenAttempt.js";
 import OpenAI from "openai";
+import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
@@ -111,7 +112,7 @@ router.get("/images", async (req, res) => {
 });
 
 // Upload images (single or multiple)
-router.post("/images", upload.array("files", 10), async (req, res) => {
+router.post("/images", requireAdmin, upload.array("files", 10), async (req, res) => {
   try {
     const files = req.files || [];
     const saved = await Promise.all(
@@ -137,13 +138,18 @@ router.post("/images", upload.array("files", 10), async (req, res) => {
 });
 
 // Delete image
-router.delete("/images/:id", async (req, res) => {
+router.delete("/images/:id", requireAdmin, async (req, res) => {
   try {
     const doc = await SeasonalImage.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: "Not found" });
+    // Validate DB path and ensure it is under the seasonal uploads directory
+    if (!doc.path || typeof doc.path !== "string" || !doc.path.startsWith("uploads/seasonal/")) {
+      return res.status(400).json({ error: "Invalid path" });
+    }
+    const uploadsRoot = path.resolve(path.join(__dirname, "..", "uploads", "seasonal"));
     const abs = path.resolve(path.join(__dirname, "..", doc.path));
-    // Ensure the resolved path lives under the uploads directory
-    if (!abs.startsWith(path.resolve(path.join(__dirname, "..")))) {
+    // Ensure the resolved path lives under the seasonal uploads directory
+    if (!abs.startsWith(uploadsRoot)) {
       return res.status(400).json({ error: "Invalid path" });
     }
     try {
@@ -159,14 +165,17 @@ router.delete("/images/:id", async (req, res) => {
 });
 
 // Bulk update selection: set selected true for provided IDs, false for others
-router.put("/images/selection", async (req, res) => {
+router.put("/images/selection", requireAdmin, async (req, res) => {
   try {
     const { selectedIds } = req.body || {};
     if (!Array.isArray(selectedIds)) {
       return res.status(400).json({ error: "selectedIds must be an array" });
     }
     // Normalize to strings
-    const ids = selectedIds.map(String);
+    const ids = selectedIds
+      .map((x) => String(x))
+      .filter((x) => /^[a-f\d]{24}$/.test(x)) // only ObjectId-like values
+      .slice(0, 200); // hard cap batch size
 
     // Set all to false first
     await SeasonalImage.updateMany({}, { $set: { selected: false } });
@@ -186,8 +195,8 @@ router.put("/images/selection", async (req, res) => {
 
 export default router;
 
-// AI image generation
-router.post("/generate", async (req, res) => {
+// AI image generation (admin-only in production)
+router.post("/generate", requireAdmin, async (req, res) => {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -251,6 +260,31 @@ router.post("/generate", async (req, res) => {
     }
 
     // Otherwise, persist to disk and DB immediately
+    // Generate a fresh image for persistence
+    let imageB64 = null;
+    try {
+      const result = await client.images.generate({
+        model: process.env.OPENAI_IMAGE_MODEL || "gpt-image-1",
+        prompt,
+        size: "1920x1080",
+        response_format: "b64_json",
+      });
+      imageB64 = result?.data?.[0]?.b64_json;
+    } catch (primaryErr) {
+      try {
+        const alt = await client.images.generate({
+          model: "dall-e-3",
+          prompt,
+          size: "1792x1024",
+          response_format: "b64_json",
+        });
+        imageB64 = alt?.data?.[0]?.b64_json;
+      } catch (fallbackErr) {
+        console.error("OpenAI image error (persist):", primaryErr?.message || primaryErr, fallbackErr?.message || fallbackErr);
+        return res.status(502).json({ error: primaryErr?.response?.data?.error?.message || fallbackErr?.response?.data?.error?.message || "Failed to generate image" });
+      }
+    }
+    if (!imageB64) return res.status(502).json({ error: "Failed to generate image" });
     const buf = Buffer.from(imageB64, "base64");
     const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const filename = `ai-${unique}.png`;
@@ -277,7 +311,7 @@ router.post("/generate", async (req, res) => {
 });
 
 // Persist a preview image to disk and DB
-router.post("/generate/use", async (req, res) => {
+router.post("/generate/use", requireAdmin, async (req, res) => {
   try {
     const { eventTitle, b64 } = req.body || {};
     if (!b64 || typeof b64 !== "string") {
@@ -312,7 +346,7 @@ router.post("/generate/use", async (req, res) => {
 });
 
 // Create a Stripe Checkout session for a generated image preview
-router.post("/payments/checkout", async (req, res) => {
+router.post("/payments/checkout", requireAdmin, async (req, res) => {
   try {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
@@ -358,7 +392,7 @@ router.post("/payments/checkout", async (req, res) => {
 });
 
 // Confirm payment and persist the previewed image
-router.post("/generate/confirm", async (req, res) => {
+router.post("/generate/confirm", requireAdmin, async (req, res) => {
   try {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {

@@ -13,6 +13,7 @@ import holidaysRoutes from "./routes/holidays.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
+import requireAdmin from "./middleware/requireAdmin.js";
 
 // CONFIGURATION
 dotenv.config();
@@ -27,9 +28,19 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 app.use(compression());
 // Basic rate limit to protect server from abuse
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false });
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
 app.use(limiter);
 app.use(helmet());
+// Enable HSTS in production behind HTTPS
+if ((process.env.NODE_ENV || "development").toLowerCase() === "production") {
+  app.use(
+    helmet.hsts({
+      maxAge: 15552000, // 180 days
+      includeSubDomains: true,
+      preload: false,
+    })
+  );
+}
 app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 app.use(morgan("common"));
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map((s) => s.trim()).filter(Boolean);
@@ -89,14 +100,26 @@ try {
 // Serve uploaded files from server/uploads irrespective of CWD
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), {
+    dotfiles: "deny",
+    fallthrough: true,
+    immutable: true,
+    maxAge: "1h",
+  })
+);
 
 /*Mongoose Setup*/
-const PORT = process.env.PORT; // Uses port from .env
+const PORT = process.env.PORT || 5501; // Uses port from .env, defaults to 5501
 if (!process.env.MONGO_URL) {
   console.warn(
     "MONGO_URL is not set. Set it in server/.env to enable database features."
   );
+}
+// Surface a clear warning when admin token is not configured in production
+if ((process.env.NODE_ENV || "development").toLowerCase() === "production" && !process.env.ADMIN_API_TOKEN) {
+  console.warn("ADMIN_API_TOKEN is not set. Sensitive routes will not be protected.");
 }
 mongoose
   .connect(process.env.MONGO_URL)

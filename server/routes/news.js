@@ -8,7 +8,7 @@ const RSS_URL =
 
 router.get("/", async (req, res) => {
   try {
-    const response = await axios.get(RSS_URL, { responseType: "text" });
+    const response = await axios.get(RSS_URL, { responseType: "text", timeout: 8000 });
     res.set("Content-Type", "application/rss+xml");
     res.send(response.data);
   } catch (error) {
