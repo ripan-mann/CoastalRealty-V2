@@ -13,9 +13,10 @@ import {
 } from "@mui/material";
 import {
   ChevronLeft,
-  AdminPanelSettingsOutlined,
+  // AdminPanelSettingsOutlined,
   HomeWorkOutlined,
   VisibilityOutlined,
+  SettingsOutlined,
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import FlexBetween from "./FlexBetween";
@@ -34,7 +35,13 @@ const navItems = [
     parent: "Listings",
   },
   { text: "Management", icon: null },
-  { text: "Admin", icon: <AdminPanelSettingsOutlined />, path: "/admin" },
+  // { text: "Admin", icon: <AdminPanelSettingsOutlined />, path: "/admin" },
+  {
+    text: "Display Settings",
+    icon: <SettingsOutlined />,
+    path: "/admin/display-settings",
+    parent: "Admin",
+  },
 ];
 
 const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
@@ -75,12 +82,42 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
               </Typography>
             );
           }
+          const prefetchDisplaySettings = async () => {
+            try {
+              // Preload admin sections
+              import(
+                /* webpackPrefetch: true */ "../components/admin/SeasonalImagesSection"
+              );
+              import(
+                /* webpackPrefetch: true */ "../components/admin/AISuggestionsSection"
+              );
+              // Prefetch images and stash into sessionStorage for quick first paint
+              const res = await fetch(`/api/seasonal/images?t=${Date.now()}`, {
+                credentials: "same-origin",
+              });
+              if (res.ok) {
+                const data = await res.json();
+                sessionStorage.setItem(
+                  "seasonalImagesCache",
+                  JSON.stringify({ ts: Date.now(), data })
+                );
+              }
+            } catch {}
+          };
           return (
             <ListItem key={text} disablePadding>
               <ListItemButton
                 onClick={() => {
                   navigate(path);
                   setActive(path);
+                }}
+                onMouseEnter={() => {
+                  if (path === "/admin/display-settings")
+                    prefetchDisplaySettings();
+                }}
+                onFocus={() => {
+                  if (path === "/admin/display-settings")
+                    prefetchDisplaySettings();
                 }}
                 sx={{
                   backgroundColor: isActive

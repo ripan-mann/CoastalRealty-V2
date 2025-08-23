@@ -26,10 +26,7 @@ const NewsFeed = () => {
 
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xml, "application/xml");
-        const itemsArray = Array.from(xmlDoc.querySelectorAll("item")).slice(
-          0,
-          5
-        );
+        const itemsArray = Array.from(xmlDoc.querySelectorAll("item"));
 
         const parsedItems = await Promise.all(
           itemsArray.map(async (item) => {
@@ -126,7 +123,7 @@ const NewsFeed = () => {
           style={{
             color: "inherit",
             textDecoration: "none",
-            fontSize: "1.5rem",
+            fontSize: "1.3rem",
           }}
         >
           {current.title}

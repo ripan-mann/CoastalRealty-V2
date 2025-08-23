@@ -1,13 +1,14 @@
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import { createTheme, responsiveFontSizes } from "@mui/material/styles";
-import { Routes } from "react-router-dom";
 import { themeSettings } from "theme";
 import Layout from "scenes/layout";
-import { BrowserRouter, Navigate, Route } from "react-router-dom";
-import { useMemo } from "react";
 import { useSelector } from "react-redux";
+import { Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { useMemo } from "react";
 import Listings from "scenes/listings";
 import DisplayView from "scenes/listings/DisplayView";
+import DisplaySettings from "scenes/admin/DisplaySettings";
 import useWakeLock from "./hooks/useWakeLock";
 
 function App() {
@@ -19,23 +20,34 @@ function App() {
   );
   return (
     <div className="app">
-      <BrowserRouter>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <Routes>
-            <Route element={<Layout />}>
-              <Route
-                path="/"
-                element={<Navigate to="/listings/display-view" replace />}
-              />
-              <Route path="/listings" element={<Listings />} />
-              <Route path="/listings/display-view" element={<DisplayView />} />
-            </Route>
-          </Routes>
-        </ThemeProvider>
-      </BrowserRouter>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <RouterProvider
+          router={createBrowserRouter(
+            [
+              {
+                element: <Layout />,
+                children: [
+                  { path: "/", element: <Navigate to="/listings/display-view" replace /> },
+                  { path: "/listings", element: <Listings /> },
+                  { path: "/listings/display-view", element: <DisplayView /> },
+                  { path: "/admin/display-settings", element: <DisplaySettings /> },
+                ],
+              },
+            ],
+            {
+              future: {
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+              },
+            }
+          )}
+        />
+      </ThemeProvider>
     </div>
   );
 }
+
+// Auth-related helper removed
 
 export default App;

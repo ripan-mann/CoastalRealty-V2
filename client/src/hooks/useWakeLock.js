@@ -15,30 +15,48 @@ const useWakeLock = () => {
 
     const requestWakeLock = async () => {
       try {
+        if (!isActive) return;
         if (!("wakeLock" in navigator)) {
           throw new Error("Wake Lock API not supported");
         }
 
-        wakeLockRef.current = await navigator.wakeLock.request("screen");
+        // Only request when the page is visible; browsers throw otherwise
+        if (document.visibilityState !== "visible") return;
 
-        wakeLockRef.current.addEventListener("release", () => {
-          if (isActive) {
+        // Avoid duplicate requests if we already hold a sentinel
+        if (wakeLockRef.current) return;
+
+        const sentinel = await navigator.wakeLock.request("screen");
+        wakeLockRef.current = sentinel;
+
+        sentinel.addEventListener("release", () => {
+          wakeLockRef.current = null;
+          // Try to reacquire only if still active and visible
+          if (isActive && document.visibilityState === "visible") {
             requestWakeLock();
           }
         });
       } catch (err) {
         setError(err);
-        console.error("Wake Lock error:", err);
+        // Common case: NotAllowedError when page is hidden — ignore noise
+        if (!(err && err.name === "NotAllowedError")) {
+          console.error("Wake Lock error:", err);
+        }
       }
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        requestWakeLock();
+      if (!isActive) return;
+      if (document.visibilityState === "visible") requestWakeLock();
+      else if (wakeLockRef.current) {
+        // If the page becomes hidden, release any existing lock
+        wakeLockRef.current.release();
+        wakeLockRef.current = null;
       }
     };
 
-    requestWakeLock();
+    // Only request on mount if visible
+    if (document.visibilityState === "visible") requestWakeLock();
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {

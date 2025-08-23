@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
@@ -6,6 +6,7 @@ import {
   Avatar,
   Paper,
   Fade,
+  Grow,
   IconButton,
   useTheme,
   Stack,
@@ -22,14 +23,17 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 
-import { getProperties, getMemberByAgentKey } from "../../state/api";
+import { getProperties, getMemberByAgentKey, listSeasonalImages, getDisplaySettings } from "../../state/api";
+import { useDispatch, useSelector } from "react-redux";
+import { setDisplaySettings } from "../../state";
+import LoadingScreen from "../../components/LoadingScreen";
 import realtyImage from "assets/c21-logo.png";
+import defaultProfile from "assets/profile.jpeg";
 import { QRCodeCanvas } from "qrcode.react";
 import { useOutletContext } from "react-router-dom";
-import NewsFeed from "../../components/NewsFeed";
+const NewsFeedLazy = lazy(() => import("../../components/NewsFeed"));
 
-// const DISPLAY_DURATION = 6000; // 60 sec
-const IMAGE_ROTATE_INTERVAL = 10000; // 10 sec
+// Intervals are configured from backend settings; defaults apply if not loaded
 
 const calculateMortgage = (listPrice) => {
   if (!listPrice || isNaN(listPrice)) return null;
@@ -45,6 +49,7 @@ const calculateMortgage = (listPrice) => {
 
 const DisplayView = () => {
   const [properties, setProperties] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [agentInfo, setAgentInfo] = useState(null);
   const [currentListingIndex, setCurrentListingIndex] = useState(0);
   const [currentPhotoSet, setCurrentPhotoSet] = useState([]);
@@ -56,23 +61,153 @@ const DisplayView = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { setIsSidebarOpen, setIsNavbarVisible } = useOutletContext();
   const [weatherData, setWeatherData] = useState(null);
+  const [seasonalImages, setSeasonalImages] = useState([]);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [overlayIndex, setOverlayIndex] = useState(0);
+  const [overlayImageVisible, setOverlayImageVisible] = useState(true);
+  const overlayCloseTimeoutRef = useRef(null);
+  const overlayIntervalRef = useRef(null);
+  const overlayTriggerIntervalRef = useRef(null);
+  const overlayOpenRef = useRef(false);
   const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
+  const dispatch = useDispatch();
+  const displaySettings = useSelector((s) => s.global.displaySettings);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  const photoRotateMs = useMemo(() => {
+    const v = Number(displaySettings?.photoRotateMs);
+    return Number.isFinite(v) && v > 0 ? v : 10000;
+  }, [displaySettings?.photoRotateMs]);
+
+  const listingSwitchMs = useMemo(() => {
+    const v = Number(displaySettings?.listingSwitchMs);
+    return Number.isFinite(v) && v > 0 ? v : 60000;
+  }, [displaySettings?.listingSwitchMs]);
+
+  const uploadedRotateMs = useMemo(() => {
+    const v = Number(displaySettings?.uploadedRotateMs);
+    return Number.isFinite(v) && v > 0 ? v : 15000;
+  }, [displaySettings?.uploadedRotateMs]);
+
+  // Fetch seasonal images once (selected only)
+  useEffect(() => {
+    const loadSeasonal = async () => {
+      try {
+        const data = await listSeasonalImages(true);
+        if (Array.isArray(data)) setSeasonalImages(data);
+      } catch (e) {
+        console.error("Failed to load seasonal images", e);
+      }
+    };
+    loadSeasonal();
+  }, []);
+
+  // Ensure timers use the latest saved settings from the backend
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await getDisplaySettings();
+        // Data is in milliseconds; matches reducers and timer usage
+        dispatch(setDisplaySettings(data));
+        setSettingsLoaded(true);
+      } catch (e) {
+        console.error("Failed to load display settings", e);
+        // Still allow defaults to run, but avoid double‑scheduling by marking loaded
+        setSettingsLoaded(true);
+      }
+    };
+    loadSettings();
+  }, [dispatch]);
+
+  // Keep ref of open state
+  useEffect(() => {
+    overlayOpenRef.current = overlayOpen;
+  }, [overlayOpen]);
+
+  // Schedule popup overlay of selected seasonal images on a global repeating interval
+  useEffect(() => {
+    // Clear any previous trigger interval
+    if (overlayTriggerIntervalRef.current) {
+      clearInterval(overlayTriggerIntervalRef.current);
+      overlayTriggerIntervalRef.current = null;
+    }
+
+    if (!settingsLoaded) return;
+    if (!seasonalImages || seasonalImages.length === 0) return;
+    if (!(uploadedRotateMs > 0)) return;
+
+    // First trigger after the interval, then every interval thereafter
+    overlayTriggerIntervalRef.current = setInterval(() => {
+      if (overlayOpenRef.current) return; // don't stack if already showing
+      setOverlayIndex(0);
+      setOverlayImageVisible(true);
+      setOverlayOpen(true);
+    }, uploadedRotateMs);
+
+    return () => {
+      if (overlayTriggerIntervalRef.current) {
+        clearInterval(overlayTriggerIntervalRef.current);
+        overlayTriggerIntervalRef.current = null;
+      }
+    };
+  }, [settingsLoaded, seasonalImages, uploadedRotateMs]);
+
+  // When overlay opens, cycle through images one by one, then close
+  useEffect(() => {
+    if (!overlayOpen) {
+      if (overlayIntervalRef.current) clearInterval(overlayIntervalRef.current);
+      if (overlayCloseTimeoutRef.current) clearTimeout(overlayCloseTimeoutRef.current);
+      return;
+    }
+    const count = seasonalImages.length;
+    if (count === 0) {
+      setOverlayOpen(false);
+      return;
+    }
+    // Show each image for the same duration as photoRotateMs with subtle fade
+    overlayIntervalRef.current = setInterval(() => {
+      setOverlayImageVisible(false);
+      setTimeout(() => {
+        setOverlayIndex((prev) => (prev + 1) % count);
+        setOverlayImageVisible(true);
+      }, 150);
+    }, photoRotateMs);
+
+    // Close after one full pass
+    overlayCloseTimeoutRef.current = setTimeout(() => {
+      setOverlayOpen(false);
+    }, photoRotateMs * count);
+
+    return () => {
+      if (overlayIntervalRef.current) clearInterval(overlayIntervalRef.current);
+      if (overlayCloseTimeoutRef.current) clearTimeout(overlayCloseTimeoutRef.current);
+    };
+  }, [overlayOpen, seasonalImages, photoRotateMs]);
 
   const fetchProperties = async () => {
-    const data = await getProperties(displayedListingKeysRef.current);
-    if (Array.isArray(data) && data.length > 0) {
-      setProperties(data);
-      setCurrentListingIndex(0);
-    } else {
-      displayedListingKeysRef.current = [];
-      const fresh = await getProperties([]);
-      setProperties(fresh || []);
-      setCurrentListingIndex(0);
+    // Show loading only when first loading (avoid overlay during background refresh)
+    if (properties.length === 0) setIsLoading(true);
+    try {
+      const data = await getProperties(displayedListingKeysRef.current);
+      if (Array.isArray(data) && data.length > 0) {
+        setProperties(data);
+        setCurrentListingIndex(0);
+      } else {
+        displayedListingKeysRef.current = [];
+        const fresh = await getProperties([]);
+        setProperties(fresh || []);
+        setCurrentListingIndex(0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch properties:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchProperties();
   }, []);
 
@@ -90,20 +225,27 @@ const DisplayView = () => {
       }
     };
     fetchAgent();
-  }, [currentListing?.ListAgentKey]);
+  }, [currentListing]);
 
   useEffect(() => {
+    // Only fetch weather after properties are loaded and we have a listing with a city
+    if (!currentListing || !currentListing.City) return;
+    const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
+    if (!apiKey) return;
+
+    let cancelled = false;
     const fetchWeather = async () => {
       try {
-        const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
-        const currentListingCity = currentListing.City || "Vancouver";
+        const currentListingCity = currentListing.City;
 
         const geoRes = await fetch(
-          `https://api.openweathermap.org/geo/1.0/direct?q=${currentListingCity}&limit=1&appid=${apiKey}`
+          `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+            currentListingCity
+          )}&limit=1&appid=${apiKey}`
         );
         const geoData = await geoRes.json();
 
-        if (geoData.length > 0) {
+        if (!cancelled && Array.isArray(geoData) && geoData.length > 0) {
           const { lat, lon } = geoData[0];
 
           const weatherRes = await fetch(
@@ -111,42 +253,80 @@ const DisplayView = () => {
           );
           const weather = await weatherRes.json();
 
-          setWeatherData({
-            temp: weather.current.temp,
-            desc: weather.current.weather[0].main,
-            icon: weather.current.weather[0].icon,
-            city: geoData[0].name,
-          });
+          if (!cancelled && weather?.current?.weather?.[0]) {
+            setWeatherData({
+              temp: weather.current.temp,
+              desc: weather.current.weather[0].main,
+              icon: weather.current.weather[0].icon,
+              city: geoData[0].name,
+            });
+          }
         }
       } catch (err) {
-        console.error("Failed to fetch weather:", err);
+        if (!cancelled) {
+          console.error("Failed to fetch weather:", err);
+        }
       }
     };
 
     fetchWeather();
-  }, [currentListing?.City]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentListing]);
+
+  const isFullscreenActive = () =>
+    !!(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    );
+
+  const handleFullscreenChange = () => {
+    const active = isFullscreenActive();
+    setIsFullscreen(active);
+    if (active) {
+      setIsSidebarOpen(false);
+      setIsNavbarVisible(false);
+    } else {
+      setIsSidebarOpen(true);
+      setIsNavbarVisible(true);
+    }
+  };
+
+  const handleFullscreenChangeCb = useCallback(() => {
+    handleFullscreenChange();
+  }, [setIsSidebarOpen, setIsNavbarVisible]);
+  useEffect(() => {
+    document.addEventListener("fullscreenchange", handleFullscreenChangeCb);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChangeCb);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChangeCb);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChangeCb);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChangeCb);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChangeCb);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChangeCb);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChangeCb);
+    };
+  }, [handleFullscreenChangeCb]);
 
   const toggleFullscreen = () => {
     const element = document.documentElement;
+    const active = isFullscreenActive();
 
-    if (!isFullscreen) {
+    if (!active) {
       if (element.requestFullscreen) element.requestFullscreen();
       else if (element.webkitRequestFullscreen)
         element.webkitRequestFullscreen();
       else if (element.msRequestFullscreen) element.msRequestFullscreen();
-
-      setIsSidebarOpen(false); // 👈 hide sidebar
-      setIsNavbarVisible(false); // 👈 hide navbar
+      // UI is updated in the fullscreenchange handler to keep in sync
     } else {
       if (document.exitFullscreen) document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
       else if (document.msExitFullscreen) document.msExitFullscreen();
-
-      setIsSidebarOpen(true); // 👈 show sidebar
-      setIsNavbarVisible(true); // 👈 show navbar
+      // UI is updated in the fullscreenchange handler
     }
-
-    setIsFullscreen(!isFullscreen);
   };
 
   useEffect(() => {
@@ -159,59 +339,33 @@ const DisplayView = () => {
     setCurrentPhotoSetIndex(0);
   }, [currentListing]);
 
-  // Rotate through photo sets and move to the next listing when finished
+  // Helper to advance to next listing, refreshing list when needed
+  const advanceToNextListing = async () => {
+    setFadeIn(false);
+    setTimeout(async () => {
+      const currentKey = properties[currentListingIndex]?.ListingKey?.toString();
+      if (currentKey && !displayedListingKeysRef.current.includes(currentKey)) {
+        displayedListingKeysRef.current.push(currentKey);
+      }
+
+      if (currentListingIndex + 1 >= properties.length) {
+        await fetchProperties();
+      } else {
+        setCurrentListingIndex((prev) => prev + 1);
+      }
+      setCurrentPhotoSetIndex(0);
+      setFadeIn(true);
+    }, 500);
+  };
+
+  // Rotate through photo sets independently; listing switches strictly by timer
   useEffect(() => {
     if (!currentListing) return;
-    if (totalPhotoSets === 0) {
-      setFadeIn(false);
-      setTimeout(async () => {
-        const currentKey =
-          properties[currentListingIndex]?.ListingKey?.toString();
-        if (
-          currentKey &&
-          !displayedListingKeysRef.current.includes(currentKey)
-        ) {
-          displayedListingKeysRef.current.push(currentKey);
-        }
-
-        if (currentListingIndex + 1 >= properties.length) {
-          await fetchProperties();
-        } else {
-          setCurrentListingIndex((prev) => prev + 1);
-        }
-        setCurrentPhotoSetIndex(0);
-        setFadeIn(true);
-      }, 500);
-      return;
-    }
+    if (totalPhotoSets === 0) return;
 
     const interval = setInterval(() => {
-      if (currentPhotoSetIndex + 1 >= totalPhotoSets) {
-        setFadeIn(false);
-        setTimeout(async () => {
-          const currentKey =
-            properties[currentListingIndex]?.ListingKey?.toString();
-          if (
-            currentKey &&
-            !displayedListingKeysRef.current.includes(currentKey)
-          ) {
-            displayedListingKeysRef.current.push(currentKey);
-          }
-
-          if (currentListingIndex + 1 >= properties.length) {
-            await fetchProperties();
-          } else {
-            setCurrentListingIndex((prev) => prev + 1);
-          }
-          setCurrentPhotoSetIndex(0);
-          setFadeIn(true);
-        }, 500);
-      } else {
-        setTimeout(() => {
-          setCurrentPhotoSetIndex((prev) => prev + 1);
-        }, 500);
-      }
-    }, IMAGE_ROTATE_INTERVAL);
+      setCurrentPhotoSetIndex((prev) => (prev + 1) % totalPhotoSets);
+    }, photoRotateMs);
     return () => clearInterval(interval);
   }, [
     currentPhotoSetIndex,
@@ -219,7 +373,18 @@ const DisplayView = () => {
     currentListing,
     properties,
     currentListingIndex,
+    photoRotateMs,
   ]);
+
+  // Listing-level timeout to force switch even if photos continue
+  useEffect(() => {
+    if (!currentListing) return;
+    const t = setTimeout(() => {
+      advanceToNextListing();
+    }, listingSwitchMs);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentListingIndex, currentListing, listingSwitchMs]);
 
   useEffect(() => {
     if (currentListing) {
@@ -229,13 +394,55 @@ const DisplayView = () => {
     }
   }, [currentPhotoSetIndex, currentListing]);
 
-  if (!currentListing) return null;
+  if (!currentListing) {
+    return <LoadingScreen open={isLoading} message="Loading listings..." />;
+  }
 
   const monthlyMortgage = calculateMortgage(currentListing.ListPrice);
 
   return (
-    <Fade in={fadeIn} timeout={500}>
+    <Fade in={fadeIn} timeout={500} appear={false}>
       <Box sx={{ position: "relative", height: "100vh", overflow: "hidden" }}>
+        <Fade in={overlayOpen && seasonalImages.length > 0} timeout={300} unmountOnExit>
+          <Box
+            sx={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 2000,
+              backgroundColor: "rgba(0,0,0,0.65)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 2,
+              cursor: "pointer",
+            }}
+            onClick={() => setOverlayOpen(false)}
+          >
+            <Grow in={overlayOpen} timeout={300}>
+              <Box sx={{ maxWidth: "100%", maxHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {(() => {
+                  const base = process.env.REACT_APP_BASE_URL || "";
+                  const item = seasonalImages[overlayIndex];
+                  const url = item?.url || "";
+                  const src = url.startsWith("http") ? url : `${base}${url}`;
+                  return (
+                    <img
+                      src={src}
+                      alt={item?.originalName || "Uploaded"}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                        transition: "opacity 200ms ease-in-out",
+                        opacity: overlayImageVisible ? 1 : 0,
+                      }}
+                    />
+                  );
+                })()}
+              </Box>
+            </Grow>
+          </Box>
+        </Fade>
         <Box
           sx={{
             display: "flex",
@@ -255,7 +462,15 @@ const DisplayView = () => {
             }}
           >
             {/* Row 1: Agent and Photos */}
-            <Grid item sx={{ flexGrow: 1, overflow: "hidden", minHeight: 0 }}>
+            <Grid
+              item
+              sx={{
+                flexGrow: 1,
+                overflow: "hidden",
+                minHeight: 0,
+                height: { xs: "60vh", md: "70vh", lg: "75vh" },
+              }}
+            >
               <Grid container spacing={2} wrap="nowrap" sx={{ height: "100%" }}>
                 {/* Column 1: Agent Info, Property Info, QR Code */}
                 <Grid
@@ -287,10 +502,7 @@ const DisplayView = () => {
                       >
                         <Avatar
                           alt={`${agentInfo?.MemberFirstName} ${agentInfo?.MemberLastName}`}
-                          src={
-                            agentInfo?.Media?.[0]?.MediaURL ||
-                            "/images/default-agent.png"
-                          }
+                          src={agentInfo?.Media?.[0]?.MediaURL || defaultProfile}
                           sx={{ width: 100, height: 100, mb: 1 }}
                         />
                         <Typography
@@ -334,7 +546,7 @@ const DisplayView = () => {
                           width: "100%",
                           boxShadow: 0,
                           mt: 3,
-                          mb: 6,
+                          mb: 3,
                         }}
                       >
                         <Typography
@@ -515,7 +727,7 @@ const DisplayView = () => {
                     flexGrow: 1,
                     flexBasis: { xs: "100%", md: "75%" },
                     maxWidth: { xs: "100%", md: "75%" },
-                    height: { xs: "60vh", md: "70vh", lg: "78vh" },
+                    height: { xs: "60vh", md: "70vh", lg: "75vh" },
                     overflow: "hidden",
                     pr: 2,
                     zIndex: 99,
@@ -599,7 +811,9 @@ const DisplayView = () => {
                   />
                 </Box>
 
-                <NewsFeed />
+                <Suspense fallback={null}>
+                  <NewsFeedLazy />
+                </Suspense>
                 <Paper
                   elevation={3}
                   sx={{
@@ -624,7 +838,29 @@ const DisplayView = () => {
               </Box>
             </Grid>
           </Grid>
+      </Box>
+      {/* Small banner with active intervals (only show when not fullscreen) */}
+      {!isFullscreen && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 24,
+            left: 24,
+            zIndex: 9999,
+            px: 1.5,
+            py: 0.5,
+            borderRadius: 1,
+            bgcolor: theme.palette.background.alt,
+            color: theme.palette.secondary[200],
+            boxShadow: 2,
+            opacity: 0.85,
+          }}
+        >
+          <Typography variant="caption">
+            Listing: {Math.round(listingSwitchMs / 1000)}s · Photos: {Math.round(photoRotateMs / 1000)}s · Uploads: {Math.round(uploadedRotateMs / 1000)}s
+          </Typography>
         </Box>
+      )}
         <IconButton
           onClick={toggleFullscreen}
           sx={{
@@ -634,10 +870,8 @@ const DisplayView = () => {
             width: isFullscreen ? 35 : 56,
             height: isFullscreen ? 35 : 56,
             borderRadius: "50%",
-            backgroundColor: isFullscreen
-              ? theme.palette.grey[0]
-              : theme.palette.primary[300],
-            color: theme.palette.secondary[200],
+            backgroundColor: isFullscreen ? "#fff" : theme.palette.primary[300],
+            color: isFullscreen ? "#fff" : theme.palette.secondary[200],
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -645,10 +879,13 @@ const DisplayView = () => {
             cursor: "pointer",
             zIndex: 9999,
             fontSize: 24,
+            '&:hover': {
+              backgroundColor: isFullscreen ? theme.palette.grey[400] : undefined,
+            },
           }}
         >
           {isFullscreen ? (
-            <CloseIcon sx={{ color: "black" }} />
+            <CloseIcon sx={{ color: "#fff" }} />
           ) : (
             <FullscreenIcon />
           )}

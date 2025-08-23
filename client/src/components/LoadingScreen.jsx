@@ -10,7 +10,7 @@ const LoadingScreen = ({ open, message }) => (
     open={open}
   >
     <Box textAlign="center">
-      <CircularProgress backgroundColor="#ffe3a3" />
+      <CircularProgress sx={{ color: "#ffe3a3" }} />
       {message && (
         <Typography color="#fff6e0" variant="h6" sx={{ mt: 2 }}>
           {message}

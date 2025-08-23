@@ -11,7 +11,7 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const prompt = `Write a short 2000 words description for this news headline: "${title}"`;
+    const prompt = `Write a short 1500-2200 words description for this news headline: "${title}"`;
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],

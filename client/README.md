@@ -1,70 +1,73 @@
-# Getting Started with Create React App
+# CoastalRealty — Client App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React front‑end for a lobby TV display and lightweight admin console used by Coastal Realty. It renders live brokerage listings, agent details, rotating photo collages, seasonal/holiday visuals, a local news feed, and optional weather — all tuned for unattended display.
 
-## Available Scripts
+This package is the client only. It talks to the Node/Express server in `../server` via a development proxy.
 
-In the project directory, you can run:
+## What It Does
 
-### `npm start`
+- Listings display: cycles through MLS®/DDF® listings from the backend, showing 6-photo collages, price and key facts.
+- Agent context: pulls the current listing agent profile for richer presentation.
+- Seasonal overlays: periodically fades in uploaded or AI‑generated seasonal/holiday images selected in Admin.
+- Admin settings: control rotation intervals and manage which images appear on the display.
+- News ticker: streams regional headlines for added ambient content.
+- Weather (optional): shows current conditions when configured.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Tech Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- React 19, React Router 6, Redux Toolkit
+- Material UI (MUI) 7 for components/theme
+- Axios for API calls, `qrcode.react` for QR codes
 
-### `npm test`
+## Key Screens
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Display View: full‑screen presentation with listing carousel, agent card, QR, news, and overlays.
+- Admin / Display Settings: update display intervals, upload/manage seasonal images, and trigger AI previews.
 
-### `npm run build`
+## Development
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Prereqs: Node 18+ and the server app running locally.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1) Install deps
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```
+npm install
+```
 
-### `npm run eject`
+2) Start the client
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```
+npm start
+```
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- Opens on `http://localhost:3000`.
+- API requests are proxied to the server on `http://localhost:5501` (see `package.json` `proxy`).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Configuration
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+The client can read environment variables from a local `.env` file. Do not commit secrets.
 
-## Learn More
+- API base URL: used when deploying without a dev proxy.
+- Weather provider key: enables the optional weather panel in the display view.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Keep values private and scoped to your environment. Never include keys in commits or docs.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## How It Integrates
 
-### Code Splitting
+- Listings, agent details, news feed, holidays, seasonal image management, and AI preview/payment flows are served by the backend in `../server`.
+- The client only calls those endpoints; it does not embed any credentials.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Scripts
 
-### Analyzing the Bundle Size
+- `npm start`: run the dev server with hot reload.
+- `npm run build`: create a production build in `build/`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Folder Overview
 
-### Making a Progressive Web App
+- `src/scenes/listings/DisplayView.jsx`: main lobby display.
+- `src/scenes/admin/DisplaySettings.jsx`: admin settings and seasonal image management.
+- `src/state/api.js`: API helpers used by the UI.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Notes
 
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- This README intentionally avoids exposing any sensitive values. Configure credentials locally via environment files and deployment secrets.
