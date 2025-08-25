@@ -1,15 +1,18 @@
 import crypto from "crypto";
 
 /**
- * Enforces an admin API token via the `x-admin-token` header.
- * - When NODE_ENV=production, the token is required if ADMIN_API_TOKEN is set.
- * - In non-production, it is a no-op to not block local dev.
+ * Optional admin protection via `x-admin-token` header.
+ * - Only enforced when ADMIN_API_TOKEN_REQUIRED=true.
+ * - Otherwise, it's a no-op so routes stay open.
  */
 export default function requireAdmin(req, res, next) {
-  const isProd = String(process.env.NODE_ENV || "development").toLowerCase() === "production";
-  const expected = process.env.ADMIN_API_TOKEN || "";
+  const required = String(process.env.ADMIN_API_TOKEN_REQUIRED || "").toLowerCase() === "true";
+  if (!required) return next();
 
-  if (!isProd || !expected) return next();
+  const expected = process.env.ADMIN_API_TOKEN || "";
+  if (!expected) {
+    return res.status(503).json({ error: "Admin token required but not configured" });
+  }
 
   const provided = (req.headers["x-admin-token"] || req.get?.("x-admin-token") || "").toString();
   try {
@@ -22,4 +25,3 @@ export default function requireAdmin(req, res, next) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 }
-

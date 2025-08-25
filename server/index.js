@@ -117,9 +117,12 @@ if (!process.env.MONGO_URL) {
     "MONGO_URL is not set. Set it in server/.env to enable database features."
   );
 }
-// Surface a clear warning when admin token is not configured in production
-if ((process.env.NODE_ENV || "development").toLowerCase() === "production" && !process.env.ADMIN_API_TOKEN) {
-  console.warn("ADMIN_API_TOKEN is not set. Sensitive routes will not be protected.");
+// Only warn if admin protection is explicitly required
+if (
+  String(process.env.ADMIN_API_TOKEN_REQUIRED || "").toLowerCase() === "true" &&
+  !process.env.ADMIN_API_TOKEN
+) {
+  console.warn("ADMIN_API_TOKEN_REQUIRED is true but ADMIN_API_TOKEN is not set.");
 }
 mongoose
   .connect(process.env.MONGO_URL)
