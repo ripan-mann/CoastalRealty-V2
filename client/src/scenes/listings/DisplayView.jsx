@@ -23,7 +23,7 @@ import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 
-import { getProperties, getMemberByAgentKey, listSeasonalImages, getDisplaySettings } from "../../state/api";
+import { getProperties, getPropertiesQuick, getMemberByAgentKey, listSeasonalImages, getDisplaySettings } from "../../state/api";
 import { useDispatch, useSelector } from "react-redux";
 import { setDisplaySettings } from "../../state";
 import LoadingScreen from "../../components/LoadingScreen";
@@ -186,14 +186,48 @@ const DisplayView = () => {
   }, [overlayOpen, seasonalImages, photoRotateMs]);
 
   const fetchProperties = async () => {
-    // Show loading only when first loading (avoid overlay during background refresh)
-    if (properties.length === 0) setIsLoading(true);
+    // Show loading only for the very first load
+    const isInitial = properties.length === 0;
+    if (isInitial) setIsLoading(true);
     try {
+      if (isInitial) {
+        // Fast path: fetch a quick first page so UI can render immediately
+        const quick = await getPropertiesQuick(displayedListingKeysRef.current);
+        if (Array.isArray(quick) && quick.length > 0) {
+          setProperties(quick);
+          setCurrentListingIndex(0);
+          setIsLoading(false);
+          // Background: fetch full list and then replace while preserving current listing if possible
+          getProperties(displayedListingKeysRef.current)
+            .then((full) => {
+              if (!Array.isArray(full) || full.length === 0) return;
+              setProperties((prev) => {
+                const currentKey = prev?.[currentListingIndex]?.ListingKey?.toString();
+                const next = full;
+                if (currentKey) {
+                  const idx = next.findIndex((l) => String(l.ListingKey) === currentKey);
+                  if (idx >= 0) setCurrentListingIndex(idx);
+                  else setCurrentListingIndex(0);
+                } else {
+                  setCurrentListingIndex(0);
+                }
+                return next;
+              });
+            })
+            .catch((e) => {
+              console.warn("Background full listings fetch failed", e);
+            });
+          return; // already handled initial paint
+        }
+        // Fallback: no quick results, do full fetch
+      }
+
       const data = await getProperties(displayedListingKeysRef.current);
       if (Array.isArray(data) && data.length > 0) {
         setProperties(data);
         setCurrentListingIndex(0);
-      } else {
+      } else if (isInitial) {
+        // Last-resort fallback: clear excludes and try once
         displayedListingKeysRef.current = [];
         const fresh = await getProperties([]);
         setProperties(fresh || []);
@@ -202,7 +236,7 @@ const DisplayView = () => {
     } catch (err) {
       console.error("Failed to fetch properties:", err);
     } finally {
-      setIsLoading(false);
+      if (isInitial) setIsLoading(false);
     }
   };
 

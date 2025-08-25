@@ -47,6 +47,38 @@ export const getProperties = async (excludeKeys = []) => {
     );
 };
 
+// Quick-first page for faster initial paint. Client filters/sorts the same way.
+export const getPropertiesQuick = async (excludeKeys = []) => {
+  const params = [];
+  if (Array.isArray(excludeKeys) && excludeKeys.length > 0) {
+    params.push(`exclude=${excludeKeys.join(",")}`);
+  }
+  params.push("quick=1");
+  const query = params.length ? `?${params.join("&")}` : "";
+  const response = await axios.get(`/api/ddf/properties${query}`);
+  const allListings = response.data || [];
+
+  const deduped = [];
+  const seen = new Set();
+  for (const listing of allListings) {
+    const key = String(listing.ListingKey);
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(listing);
+    }
+  }
+
+  const excludedSubTypes = ["Business", "Industrial", "Retail", "Vacant Land"];
+
+  return deduped
+    .filter((listing) => !excludedSubTypes.includes(listing.PropertySubType))
+    .filter((listing) => Number(listing.PhotosCount ?? 0) >= 4)
+    .sort(
+      (a, b) =>
+        new Date(b.OriginalEntryTimestamp) - new Date(a.OriginalEntryTimestamp)
+    );
+};
+
 export const getMemberByAgentKey = async (agentKey) => {
   try {
     const response = await axios.get(`/api/ddf/member/${agentKey}`);

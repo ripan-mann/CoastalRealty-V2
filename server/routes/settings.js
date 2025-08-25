@@ -19,6 +19,7 @@ router.get("/display", async (_req, res) => {
       listingSwitchMs: doc.listingSwitchMs,
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
+      newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,
     });
   } catch (err) {
@@ -29,7 +30,7 @@ router.get("/display", async (_req, res) => {
 
 router.put("/display", requireAdmin, async (req, res) => {
   try {
-    let { listingSwitchMs, photoRotateMs, uploadedRotateMs } = req.body || {};
+    let { listingSwitchMs, photoRotateMs, uploadedRotateMs, newsRotateMs } = req.body || {};
 
     const sanitize = (v, min) => {
       const n = Number(v);
@@ -39,9 +40,11 @@ router.put("/display", requireAdmin, async (req, res) => {
     const ls = sanitize(listingSwitchMs, 1000);
     const pr = sanitize(photoRotateMs, 500);
     const ur = sanitize(uploadedRotateMs, 500);
+    const nr = sanitize(newsRotateMs, 1000);
     if (ls !== undefined) update.listingSwitchMs = ls;
     if (pr !== undefined) update.photoRotateMs = pr;
     if (ur !== undefined) update.uploadedRotateMs = ur;
+    if (nr !== undefined) update.newsRotateMs = nr;
 
     const doc = await DisplaySettings.findOneAndUpdate({}, update, {
       new: true,
@@ -52,6 +55,7 @@ router.put("/display", requireAdmin, async (req, res) => {
       listingSwitchMs: doc.listingSwitchMs,
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
+      newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,
     });
   } catch (err) {

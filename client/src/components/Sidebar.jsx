@@ -49,10 +49,43 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
   const [active, setActive] = useState("");
   const navigate = useNavigate();
   const theme = useTheme();
+  const [counts, setCounts] = useState({ listings: null, news: null });
 
   useEffect(() => {
     setActive(pathname);
   }, [pathname]);
+
+  // Load lightweight counts for listings and news to show a small banner
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [lsRes, nsRes] = await Promise.allSettled([
+          fetch("/api/ddf/stats", { credentials: "same-origin" }),
+          fetch("/api/news/count", { credentials: "same-origin" }),
+        ]);
+        const ls =
+          lsRes.status === "fulfilled" && lsRes.value.ok
+            ? await lsRes.value.json()
+            : { propertyCount: null };
+        const ns =
+          nsRes.status === "fulfilled" && nsRes.value.ok
+            ? await nsRes.value.json()
+            : { count: null };
+        if (!cancelled) {
+          setCounts({
+            listings: Number(ls.propertyCount ?? 0) || 0,
+            news: Number(ns.count ?? 0) || 0,
+          });
+        }
+      } catch {
+        if (!cancelled) setCounts({ listings: 0, news: 0 });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const drawerContent = (
     <Box width="100%">
@@ -70,6 +103,27 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
             <ChevronLeft />
           </IconButton>
         </FlexBetween>
+      </Box>
+      <Box
+        sx={{
+          mx: 3,
+          mt: 0,
+          mb: 1,
+          py: 1,
+          px: 1.5,
+          borderRadius: 1.5,
+          color: theme.palette.secondary[100],
+          bgcolor: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.secondary[800]}`,
+          fontSize: 13,
+        }}
+      >
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+          Totals
+        </Typography>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          Listings: {counts.listings ?? "—"} · News: {counts.news ?? "—"}
+        </Typography>
       </Box>
       <List>
         {navItems.map(({ text, icon, path, parent }) => {

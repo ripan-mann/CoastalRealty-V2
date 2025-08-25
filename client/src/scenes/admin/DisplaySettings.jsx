@@ -53,6 +53,7 @@ const DisplaySettings = () => {
     listingSwitchMs: 60,
     photoRotateMs: 10,
     uploadedRotateMs: 15,
+    newsRotateMs: 50,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -86,6 +87,7 @@ const DisplaySettings = () => {
         listingSwitchMs: (data.listingSwitchMs ?? 60000) / 1000,
         photoRotateMs: (data.photoRotateMs ?? 10000) / 1000,
         uploadedRotateMs: (data.uploadedRotateMs ?? 15000) / 1000,
+        newsRotateMs: (data.newsRotateMs ?? 50000) / 1000,
       });
     } catch (e) {
       // keep defaults, show quiet error
@@ -343,6 +345,7 @@ const DisplaySettings = () => {
         listingSwitchMs: Math.round((form.listingSwitchMs ?? 0) * 1000),
         photoRotateMs: Math.round((form.photoRotateMs ?? 0) * 1000),
         uploadedRotateMs: Math.round((form.uploadedRotateMs ?? 0) * 1000),
+        newsRotateMs: Math.round((form.newsRotateMs ?? 0) * 1000),
       };
       const updated = await updateDisplaySettings(payload);
       // Keep Redux store in ms for DisplayView timing
@@ -352,6 +355,7 @@ const DisplaySettings = () => {
         listingSwitchMs: (updated.listingSwitchMs ?? 60000) / 1000,
         photoRotateMs: (updated.photoRotateMs ?? 10000) / 1000,
         uploadedRotateMs: (updated.uploadedRotateMs ?? 15000) / 1000,
+        newsRotateMs: (updated.newsRotateMs ?? 50000) / 1000,
       });
       setSaved(true);
     } catch (e) {
@@ -610,6 +614,34 @@ const DisplaySettings = () => {
                 },
               }}
               helperText="Interval for rotating any uploaded seasonal images (seconds)"
+              fullWidth
+            />
+
+            <TextField
+              label="News rotation interval"
+              type="number"
+              size="small"
+              value={form.newsRotateMs}
+              onChange={handleChange("newsRotateMs")}
+              inputProps={{ min: 1, step: 1 }}
+              InputProps={{
+                endAdornment: <InputAdornment position="end">s</InputAdornment>,
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: alpha(theme.palette.info.main, 0.6),
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: theme.palette.info.main,
+                  },
+                },
+                "& .MuiInputLabel-root.Mui-focused": {
+                  color: theme.palette.info.main,
+                },
+              }}
+              helperText="Time before moving to next news headline (seconds)"
               fullWidth
             />
           </Stack>
