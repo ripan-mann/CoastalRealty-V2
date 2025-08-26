@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Paper, Typography, Button, Divider, CircularProgress } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { API_BASE } from "../../config";
 
 const SeasonalImagesSection = ({
   images,
@@ -78,7 +79,10 @@ const SeasonalImagesSection = ({
                 backgroundColor: alpha(theme.palette.text.primary, 0.05),
               }} onContextMenu={(e) => e.preventDefault()}>
                 <img
-                  src={img.url}
+                  src={(() => {
+                    const url = img?.url || "";
+                    return url.startsWith("http") ? url : `${API_BASE || ''}${url}`;
+                  })()}
                   alt={img.originalName}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}

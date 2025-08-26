@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Paper, Typography, Box } from "@mui/material";
 
-const FEED_ENDPOINT = "/api/news";
-const SUMMARY_ENDPOINT = "/api/news-summary";
+import { API_BASE } from "../config";
+const FEED_ENDPOINT = `${API_BASE || ''}/api/news`;
+const SUMMARY_ENDPOINT = `${API_BASE || ''}/api/news-summary`;
 
 const removeSourceSuffix = (text, source) => {
   if (!text || !source) return text;

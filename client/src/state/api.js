@@ -1,9 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import axios from "axios";
+import { API_BASE } from "../config";
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
-    baseUrl: process.env.REACT_APP_BASE_URL,
+    baseUrl: API_BASE || process.env.REACT_APP_BASE_URL,
   }),
   reducerPath: "adminApi",
   tagTypes: ["User"],

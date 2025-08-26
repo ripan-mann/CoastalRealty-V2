@@ -20,6 +20,7 @@ import {
 } from "@mui/icons-material";
 import { useLocation, useNavigate } from "react-router-dom";
 import FlexBetween from "./FlexBetween";
+import { API_BASE } from "../config";
 
 const navItems = [
   {
@@ -60,9 +61,10 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
     let cancelled = false;
     (async () => {
       try {
+        const base = API_BASE || "";
         const [lsRes, nsRes] = await Promise.allSettled([
-          fetch("/api/ddf/stats", { credentials: "same-origin" }),
-          fetch("/api/news/count", { credentials: "same-origin" }),
+          fetch(`${base}/api/ddf/stats`, { credentials: base ? "include" : "same-origin" }),
+          fetch(`${base}/api/news/count`, { credentials: base ? "include" : "same-origin" }),
         ]);
         const ls =
           lsRes.status === "fulfilled" && lsRes.value.ok
@@ -146,8 +148,9 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
                 /* webpackPrefetch: true */ "../components/admin/AISuggestionsSection"
               );
               // Prefetch images and stash into sessionStorage for quick first paint
-              const res = await fetch(`/api/seasonal/images?t=${Date.now()}`, {
-                credentials: "same-origin",
+              const base = API_BASE || "";
+              const res = await fetch(`${base}/api/seasonal/images?t=${Date.now()}`, {
+                credentials: base ? "include" : "same-origin",
               });
               if (res.ok) {
                 const data = await res.json();

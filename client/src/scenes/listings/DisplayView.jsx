@@ -24,6 +24,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import CategoryIcon from "@mui/icons-material/Category";
 
 import { getProperties, getPropertiesQuick, getMemberByAgentKey, listSeasonalImages, getDisplaySettings } from "../../state/api";
+import { API_BASE } from "../../config";
 import { useDispatch, useSelector } from "react-redux";
 import { setDisplaySettings } from "../../state";
 import LoadingScreen from "../../components/LoadingScreen";
@@ -455,7 +456,7 @@ const DisplayView = () => {
             <Grow in={overlayOpen} timeout={300}>
               <Box sx={{ maxWidth: "100%", maxHeight: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {(() => {
-                  const base = process.env.REACT_APP_BASE_URL || "";
+                  const base = API_BASE || "";
                   const item = seasonalImages[overlayIndex];
                   const url = item?.url || "";
                   const src = url.startsWith("http") ? url : `${base}${url}`;
