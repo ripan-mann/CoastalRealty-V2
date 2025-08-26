@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import SeasonalImage from "../models/SeasonalImage.js";
 import AiGenAttempt from "../models/AiGenAttempt.js";
-import OpenAI from "openai";
 import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
@@ -207,6 +206,7 @@ router.post("/generate", requireAdmin, async (req, res) => {
         .status(503)
         .json({ error: "Image generation disabled. Missing OPENAI_API_KEY." });
     }
+    const { default: OpenAI } = await import("openai");
     const { eventTitle } = req.body || {};
     const title =
       typeof eventTitle === "string" && eventTitle.trim().length > 0

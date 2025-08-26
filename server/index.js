@@ -74,29 +74,38 @@ app.use("/api/news-summary", newsSummaryRoutes); /*news summary*/
 app.use("/api/settings", settingsRoutes); /*display settings*/
 app.use("/api/holidays", holidaysRoutes); /*holidays*/
 /* seasonal uploads */
-try {
-  const { default: seasonalRoutes } = await import("./routes/seasonal.js");
-  app.use("/api/seasonal", seasonalRoutes);
-} catch (e) {
-  console.warn(
-    "Seasonal routes disabled (missing dependency?):",
-    e?.message || e
-  );
-  // Fallback stub routes so client doesn't 404
-  const fallback = express.Router();
-  fallback.get("/images", (_req, res) => res.json([]));
-  fallback.post("/images", (_req, res) =>
-    res
-      .status(503)
-      .json({ error: "Uploads disabled. Install 'multer' on the server." })
-  );
-  fallback.delete("/images/:id", (_req, res) =>
-    res
-      .status(503)
-      .json({ error: "Uploads disabled. Install 'multer' on the server." })
-  );
-  app.use("/api/seasonal", fallback);
-}
+(() => {
+  const mountFallback = (reason) => {
+    if (reason) {
+      console.warn(
+        "Seasonal routes disabled (missing dependency?):",
+        reason?.message || reason
+      );
+    }
+    const fallback = express.Router();
+    fallback.get("/images", (_req, res) => res.json([]));
+    fallback.post("/images", (_req, res) =>
+      res.status(503).json({ error: "Uploads disabled. Install 'multer' on the server." })
+    );
+    fallback.delete("/images/:id", (_req, res) =>
+      res.status(503).json({ error: "Uploads disabled. Install 'multer' on the server." })
+    );
+    app.use("/api/seasonal", fallback);
+  };
+  try {
+    import("./routes/seasonal.js")
+      .then(({ default: seasonalRoutes }) => {
+        try {
+          app.use("/api/seasonal", seasonalRoutes);
+        } catch (e) {
+          mountFallback(e);
+        }
+      })
+      .catch((e) => mountFallback(e));
+  } catch (e) {
+    mountFallback(e);
+  }
+})();
 // Serve uploaded files from a configurable directory. Defaults to server/uploads.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
