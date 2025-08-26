@@ -19,6 +19,7 @@ const NewsFeed = () => {
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const summariesStartedRef = useRef(false);
+  const itemsRef = useRef([]);
   const displaySettings = useSelector((s) => s.global.displaySettings);
 
   const rotationMs = useMemo(() => {
@@ -71,71 +72,66 @@ const NewsFeed = () => {
 
   // fetch summaries in the background with small concurrency
   useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
     if (!items.length) return;
     if (summariesStartedRef.current) return;
     summariesStartedRef.current = true;
 
     let cancelled = false;
+    const itemsSnapshot = itemsRef.current;
 
     const runWithConcurrency = async (indices) => {
       const queue = [...indices];
-      let active = 0;
-      return new Promise((resolve) => {
-        const next = () => {
-          if (cancelled) return resolve();
-          if (queue.length === 0 && active === 0) return resolve();
-          while (active < MAX_CONCURRENCY && queue.length > 0) {
-            const idx = queue.shift();
-            if (idx == null) break;
-            active++;
-            const title = items[idx]?.title || "";
-            fetch(SUMMARY_ENDPOINT, {
+      const worker = async () => {
+        while (!cancelled) {
+          const idx = queue.shift();
+          if (idx == null) return;
+          const title = itemsSnapshot[idx]?.title || "";
+          try {
+            const res = await fetch(SUMMARY_ENDPOINT, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title }),
-            })
-              .then((res) => (res.ok ? res.json() : null))
-              .then((data) => {
-                if (cancelled || !data) return;
-                const raw = data.description || "";
-                setItems((prev) => {
-                  const it = prev[idx];
-                  if (!it) return prev;
-                  const cleanDescription = removeSourceSuffix(raw.trim(), it.source);
-                  if (it.description === cleanDescription) return prev; // no change
-                  const copy = [...prev];
-                  copy[idx] = { ...it, description: cleanDescription };
-                  return copy;
-                });
-              })
-              .catch(() => {
-                // mark as unavailable so UI doesn't keep showing a loader
-                setItems((prev) => {
-                  const it = prev[idx];
-                  if (!it) return prev;
-                  if (it.description && it.description !== "") return prev;
-                  const copy = [...prev];
-                  copy[idx] = { ...it, description: "Summary unavailable." };
-                  return copy;
-                });
-              })
-              .finally(() => {
-                active--;
-                next();
-              });
+            });
+            if (!res.ok) throw new Error("bad response");
+            const data = await res.json();
+            if (cancelled || !data) continue;
+            const raw = data.description || "";
+            setItems((prev) => {
+              const it = prev[idx];
+              if (!it) return prev;
+              const cleanDescription = removeSourceSuffix(raw.trim(), it.source);
+              if (it.description === cleanDescription) return prev;
+              const copy = [...prev];
+              copy[idx] = { ...it, description: cleanDescription };
+              return copy;
+            });
+          } catch (_) {
+            setItems((prev) => {
+              const it = prev[idx];
+              if (!it) return prev;
+              if (it.description && it.description !== "") return prev;
+              const copy = [...prev];
+              copy[idx] = { ...it, description: "Summary unavailable." };
+              return copy;
+            });
           }
-        };
-        next();
-      });
+        }
+      };
+      // Start up to MAX_CONCURRENCY workers
+      const workers = Array.from({ length: Math.min(MAX_CONCURRENCY, indices.length) }, () => worker());
+      await Promise.all(workers);
     };
 
     // Prioritize first N for faster initial experience, then the rest
-    const first = Array.from({ length: Math.min(INITIAL_SUMMARY_COUNT, items.length) }, (_, i) => i);
-    const rest = Array.from({ length: Math.max(items.length - first.length, 0) }, (_, i) => i + first.length);
+    const first = Array.from({ length: Math.min(INITIAL_SUMMARY_COUNT, itemsSnapshot.length) }, (_, i) => i);
+    const rest = Array.from({ length: Math.max(itemsSnapshot.length - first.length, 0) }, (_, i) => i + first.length);
 
     (async () => {
       await runWithConcurrency(first);
-      // background the rest with a tiny delay to yield to rendering
       setTimeout(() => runWithConcurrency(rest), 0);
     })();
 

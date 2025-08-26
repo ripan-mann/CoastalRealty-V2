@@ -10,11 +10,13 @@ import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
-// Resolve to server/uploads/seasonal regardless of process CWD
+// Resolve to base uploads directory, configurable via UPLOADS_DIR. Default: server/uploads.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// __dirname here is server/routes, so go up one to server/, then into uploads/seasonal
-const uploadDir = path.join(__dirname, "..", "uploads", "seasonal");
+const baseUploadsDir = path.resolve(
+  process.env.UPLOADS_DIR || path.join(__dirname, "..", "uploads")
+);
+const uploadDir = path.join(baseUploadsDir, "seasonal");
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -146,8 +148,9 @@ router.delete("/images/:id", requireAdmin, async (req, res) => {
     if (!doc.path || typeof doc.path !== "string" || !doc.path.startsWith("uploads/seasonal/")) {
       return res.status(400).json({ error: "Invalid path" });
     }
-    const uploadsRoot = path.resolve(path.join(__dirname, "..", "uploads", "seasonal"));
-    const abs = path.resolve(path.join(__dirname, "..", doc.path));
+    const uploadsRoot = path.resolve(path.join(baseUploadsDir, "seasonal"));
+    const relUnderUploads = String(doc.path).replace(/^uploads[\/]/, "");
+    const abs = path.resolve(path.join(baseUploadsDir, relUnderUploads));
     // Ensure the resolved path lives under the seasonal uploads directory
     if (!abs.startsWith(uploadsRoot)) {
       return res.status(400).json({ error: "Invalid path" });

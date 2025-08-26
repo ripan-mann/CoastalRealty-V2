@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback, lazy, Suspense } from "react";
+import React, { useEffect, useState, useRef, useMemo, lazy, Suspense } from "react";
 import {
   Box,
   Grid,
@@ -242,9 +242,8 @@ const DisplayView = () => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     fetchProperties();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -318,7 +317,7 @@ const DisplayView = () => {
       document.msFullscreenElement
     );
 
-  const handleFullscreenChange = () => {
+  const handleFullscreenChange = React.useCallback(() => {
     const active = isFullscreenActive();
     setIsFullscreen(active);
     if (active) {
@@ -328,23 +327,20 @@ const DisplayView = () => {
       setIsSidebarOpen(true);
       setIsNavbarVisible(true);
     }
-  };
-
-  const handleFullscreenChangeCb = useCallback(() => {
-    handleFullscreenChange();
   }, [setIsSidebarOpen, setIsNavbarVisible]);
+
   useEffect(() => {
-    document.addEventListener("fullscreenchange", handleFullscreenChangeCb);
-    document.addEventListener("webkitfullscreenchange", handleFullscreenChangeCb);
-    document.addEventListener("mozfullscreenchange", handleFullscreenChangeCb);
-    document.addEventListener("MSFullscreenChange", handleFullscreenChangeCb);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
     return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChangeCb);
-      document.removeEventListener("webkitfullscreenchange", handleFullscreenChangeCb);
-      document.removeEventListener("mozfullscreenchange", handleFullscreenChangeCb);
-      document.removeEventListener("MSFullscreenChange", handleFullscreenChangeCb);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
     };
-  }, [handleFullscreenChangeCb]);
+  }, [handleFullscreenChange]);
 
   const toggleFullscreen = () => {
     const element = document.documentElement;

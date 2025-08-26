@@ -97,18 +97,18 @@ try {
   );
   app.use("/api/seasonal", fallback);
 }
-// Serve uploaded files from server/uploads irrespective of CWD
+// Serve uploaded files from a configurable directory. Defaults to server/uploads.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, "uploads"), {
-    dotfiles: "deny",
-    fallthrough: true,
-    immutable: true,
-    maxAge: "1h",
-  })
+const BASE_UPLOADS_DIR = path.resolve(
+  process.env.UPLOADS_DIR || path.join(__dirname, "uploads")
 );
+app.use("/uploads", express.static(BASE_UPLOADS_DIR, {
+  dotfiles: "deny",
+  fallthrough: true,
+  immutable: true,
+  maxAge: "1h",
+}));
 
 /*Mongoose Setup*/
 const PORT = process.env.PORT || 5501; // Uses port from .env, defaults to 5501
