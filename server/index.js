@@ -9,6 +9,7 @@ import ddfRoutes from "./routes/ddf.js";
 import newsRoutes from "./routes/news.js";
 import newsSummaryRoutes from "./routes/newsSummary.js";
 import settingsRoutes from "./routes/settings.js";
+import seasonalRoutes from "./routes/seasonal.js";
 import holidaysRoutes from "./routes/holidays.js";
 import healthRoutes from "./routes/health.js";
 import path from "path";
@@ -75,51 +76,9 @@ app.use("/api/news-summary", newsSummaryRoutes); /*news summary*/
 app.use("/api/settings", settingsRoutes); /*display settings*/
 app.use("/api/holidays", holidaysRoutes); /*holidays*/
 app.use("/api/health", healthRoutes); /*health check*/
-/* seasonal uploads */
-(() => {
-  const mountFallback = (reason) => {
-    if (reason) {
-      console.warn(
-        "Seasonal routes disabled (missing dependency?):",
-        reason?.message || reason
-      );
-    }
-    const fallback = express.Router();
-    fallback.get("/images", (_req, res) => res.json([]));
-    fallback.post("/images", (_req, res) =>
-      res.status(503).json({ error: "Uploads disabled. Install 'multer' on the server." })
-    );
-    fallback.delete("/images/:id", (_req, res) =>
-      res.status(503).json({ error: "Uploads disabled. Install 'multer' on the server." })
-    );
-    app.use("/api/seasonal", fallback);
-  };
-  try {
-    import("./routes/seasonal.js")
-      .then(({ default: seasonalRoutes }) => {
-        try {
-          app.use("/api/seasonal", seasonalRoutes);
-        } catch (e) {
-          mountFallback(e);
-        }
-      })
-      .catch((e) => mountFallback(e));
-  } catch (e) {
-    mountFallback(e);
-  }
-})();
-// Serve uploaded files from a configurable directory. Defaults to server/uploads.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const BASE_UPLOADS_DIR = path.resolve(
-  process.env.UPLOADS_DIR || path.join(__dirname, "uploads")
-);
-app.use("/uploads", express.static(BASE_UPLOADS_DIR, {
-  dotfiles: "deny",
-  fallthrough: true,
-  immutable: true,
-  maxAge: "1h",
-}));
+/* seasonal uploads (Cloudinary only) */
+app.use("/api/seasonal", seasonalRoutes);
+// Legacy local uploads serving removed — Cloudinary is the provider for seasonal images.
 
 /*Mongoose Setup*/
 const PORT = process.env.PORT || 5501; // Uses port from .env, defaults to 5501

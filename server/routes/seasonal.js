@@ -1,8 +1,5 @@
 import express from "express";
 import multer from "multer";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import SeasonalImage from "../models/SeasonalImage.js";
 import AiGenAttempt from "../models/AiGenAttempt.js";
 import {
@@ -13,15 +10,6 @@ import {
 import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
-
-// Resolve to base uploads directory, configurable via UPLOADS_DIR. Default: server/uploads.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const baseUploadsDir = path.resolve(
-  process.env.UPLOADS_DIR || path.join(__dirname, "..", "uploads")
-);
-const uploadDir = path.join(baseUploadsDir, "seasonal");
-fs.mkdirSync(uploadDir, { recursive: true });
 
 // Use memory storage because files are uploaded to Cloudinary
 const storage = multer.memoryStorage();
@@ -185,29 +173,15 @@ router.post(
   }
 );
 
-// Delete image
+// Delete image (Cloudinary only)
 router.delete("/images/:id", requireAdmin, async (req, res) => {
   try {
     const doc = await SeasonalImage.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: "Not found" });
-    // If exists on Cloudinary, delete there; else try local file cleanup for legacy entries
     if (doc.cloudinaryPublicId) {
       try {
         await deleteFromCloudinary(doc.cloudinaryPublicId);
       } catch (_) {}
-    } else if (
-      doc.path &&
-      typeof doc.path === "string" &&
-      doc.path.startsWith("uploads/seasonal/")
-    ) {
-      const uploadsRoot = path.resolve(path.join(baseUploadsDir, "seasonal"));
-      const relUnderUploads = String(doc.path).replace(/^uploads[\/]/, "");
-      const abs = path.resolve(path.join(baseUploadsDir, relUnderUploads));
-      if (abs.startsWith(uploadsRoot)) {
-        try {
-          fs.unlinkSync(abs);
-        } catch (_) {}
-      }
     }
     await SeasonalImage.deleteOne({ _id: doc._id });
     res.json({ success: true });
