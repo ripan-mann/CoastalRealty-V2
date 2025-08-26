@@ -18,8 +18,10 @@ const NewsFeed = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const summariesStartedRef = useRef(false);
   const itemsRef = useRef([]);
+  const inFlightRef = useRef(new Set());
+  const prefetchTimeoutRef = useRef(null);
+  const rotateIntervalRef = useRef(null);
   const displaySettings = useSelector((s) => s.global.displaySettings);
 
   const rotationMs = useMemo(() => {
@@ -27,10 +29,13 @@ const NewsFeed = () => {
     return Number.isFinite(v) && v > 0 ? v : 50000;
   }, [displaySettings?.newsRotateMs]);
 
-  // tune how much work we do up front vs. background
-  const INITIAL_SUMMARY_COUNT = 10; // fetch summaries for first N quickly
-  const MAX_CONCURRENCY = 5; // limit parallel summary calls to avoid slowdowns/rate limits
-  const MAX_ITEMS = 200; // safety cap so huge feeds don't stall the UI
+  // Cap the number of feed items to keep memory stable
+  const MAX_ITEMS = 200;
+  // Prefetch the next summary shortly before rotation to reduce request rate
+  const prefetchLeadMs = useMemo(() => {
+    // About 20% of rotation time, capped at 10s
+    return Math.min(10000, Math.max(1000, Math.floor(rotationMs * 0.2)));
+  }, [rotationMs]);
 
   useEffect(() => {
     const fetchFeed = async () => {
@@ -70,83 +75,90 @@ const NewsFeed = () => {
     fetchFeed();
   }, []);
 
-  // fetch summaries in the background with small concurrency
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
 
+  // Fetch summary for a single index if not already present/in-flight
+  const fetchSummary = async (idx) => {
+    const cur = itemsRef.current[idx];
+    if (!cur) return;
+    if (cur.description && cur.description !== "") return;
+    const key = `${idx}:${cur.title}`;
+    if (inFlightRef.current.has(key)) return;
+    inFlightRef.current.add(key);
+    try {
+      const res = await fetch(SUMMARY_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: cur.title }),
+      });
+      if (!res.ok) throw new Error("bad response");
+      const data = await res.json();
+      const raw = (data?.description || "").trim();
+      setItems((prev) => {
+        const it = prev[idx];
+        if (!it) return prev;
+        const cleanDescription = removeSourceSuffix(raw, it.source);
+        if (it.description === cleanDescription) return prev;
+        const copy = [...prev];
+        copy[idx] = { ...it, description: cleanDescription };
+        return copy;
+      });
+    } catch (_) {
+      setItems((prev) => {
+        const it = prev[idx];
+        if (!it) return prev;
+        if (it.description && it.description !== "") return prev;
+        const copy = [...prev];
+        copy[idx] = { ...it, description: "Summary unavailable." };
+        return copy;
+      });
+    } finally {
+      inFlightRef.current.delete(key);
+    }
+  };
+
+  // Rotation + just-in-time prefetch
   useEffect(() => {
     if (!items.length) return;
-    if (summariesStartedRef.current) return;
-    summariesStartedRef.current = true;
+    // Ensure current item has a summary
+    fetchSummary(currentIndex);
 
-    let cancelled = false;
-    const itemsSnapshot = itemsRef.current;
-
-    const runWithConcurrency = async (indices) => {
-      const queue = [...indices];
-      const worker = async () => {
-        while (!cancelled) {
-          const idx = queue.shift();
-          if (idx == null) return;
-          const title = itemsSnapshot[idx]?.title || "";
-          try {
-            const res = await fetch(SUMMARY_ENDPOINT, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title }),
-            });
-            if (!res.ok) throw new Error("bad response");
-            const data = await res.json();
-            if (cancelled || !data) continue;
-            const raw = data.description || "";
-            setItems((prev) => {
-              const it = prev[idx];
-              if (!it) return prev;
-              const cleanDescription = removeSourceSuffix(raw.trim(), it.source);
-              if (it.description === cleanDescription) return prev;
-              const copy = [...prev];
-              copy[idx] = { ...it, description: cleanDescription };
-              return copy;
-            });
-          } catch (_) {
-            setItems((prev) => {
-              const it = prev[idx];
-              if (!it) return prev;
-              if (it.description && it.description !== "") return prev;
-              const copy = [...prev];
-              copy[idx] = { ...it, description: "Summary unavailable." };
-              return copy;
-            });
-          }
-        }
-      };
-      // Start up to MAX_CONCURRENCY workers
-      const workers = Array.from({ length: Math.min(MAX_CONCURRENCY, indices.length) }, () => worker());
-      await Promise.all(workers);
-    };
-
-    // Prioritize first N for faster initial experience, then the rest
-    const first = Array.from({ length: Math.min(INITIAL_SUMMARY_COUNT, itemsSnapshot.length) }, (_, i) => i);
-    const rest = Array.from({ length: Math.max(itemsSnapshot.length - first.length, 0) }, (_, i) => i + first.length);
-
-    (async () => {
-      await runWithConcurrency(first);
-      setTimeout(() => runWithConcurrency(rest), 0);
-    })();
+    // Schedule prefetch shortly before the next rotation
+    if (prefetchTimeoutRef.current) {
+      clearTimeout(prefetchTimeoutRef.current);
+      prefetchTimeoutRef.current = null;
+    }
+    prefetchTimeoutRef.current = setTimeout(() => {
+      const nextIdx = (currentIndex + 1) % items.length;
+      fetchSummary(nextIdx);
+    }, Math.max(0, rotationMs - prefetchLeadMs));
 
     return () => {
-      cancelled = true;
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+        prefetchTimeoutRef.current = null;
+      }
     };
-  }, [items.length]);
+  }, [items.length, currentIndex, rotationMs, prefetchLeadMs]);
 
   useEffect(() => {
     if (!items.length) return;
-    const interval = setInterval(() => {
+    if (rotateIntervalRef.current) {
+      clearInterval(rotateIntervalRef.current);
+      rotateIntervalRef.current = null;
+    }
+    rotateIntervalRef.current = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % items.length);
     }, rotationMs);
-    return () => clearInterval(interval);
-  }, [items, rotationMs]);
+    return () => {
+      if (rotateIntervalRef.current) {
+        clearInterval(rotateIntervalRef.current);
+        rotateIntervalRef.current = null;
+      }
+    };
+  }, [items.length, rotationMs]);
 
   if (loading) {
     return <Typography>Loading news...</Typography>;

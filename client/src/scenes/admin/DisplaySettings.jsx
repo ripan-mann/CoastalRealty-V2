@@ -228,17 +228,9 @@ const DisplaySettings = () => {
     
         setSuggestions(mapped);
 
-        // Prefetch per-event AI rate limits
-        try {
-          const { getAiGenRate } = await import("state/api");
-          const entries = await Promise.all(
-            mapped.map(async (s) => {
-              const data = await getAiGenRate(s.title);
-              return [s.title, { remaining: Number(data.remaining ?? GEN_LIMIT), resetAt: Date.now() + Number(data.resetInSec || 0) * 1000 }];
-            })
-          );
-          setAiLimitMap(Object.fromEntries(entries));
-        } catch {}
+        // Avoid bulk prefetch of AI rate limits to reduce request bursts.
+        // Limits are updated on demand when user generates a preview.
+        setAiLimitMap({});
       } catch (e) {
         console.error('Failed to load holidays', e);
         // Fallback to existing static set if present

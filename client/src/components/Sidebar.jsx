@@ -56,10 +56,10 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
     setActive(pathname);
   }, [pathname]);
 
-  // Load lightweight counts for listings and news to show a small banner
+  // Load lightweight counts later to avoid burst at startup
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const timer = setTimeout(async () => {
       try {
         const base = API_BASE || "";
         const [lsRes, nsRes] = await Promise.allSettled([
@@ -83,9 +83,10 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
       } catch {
         if (!cancelled) setCounts({ listings: 0, news: 0 });
       }
-    })();
+    }, 2000);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, []);
 

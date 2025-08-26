@@ -75,6 +75,10 @@ const DisplayView = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { setIsSidebarOpen, setIsNavbarVisible } = useOutletContext();
   const [weatherData, setWeatherData] = useState(null);
+  // Cache agent and weather data to avoid repeated network calls
+  const agentCacheRef = useRef(new Map()); // agentKey -> agentInfo
+  const weatherCacheRef = useRef(new Map()); // city(lower) -> { ts, data }
+  const prefetchTimeoutRef = useRef(null);
   const [seasonalImages, setSeasonalImages] = useState([]);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [overlayIndex, setOverlayIndex] = useState(0);
@@ -267,10 +271,15 @@ const DisplayView = () => {
     const fetchAgent = async () => {
       if (!currentListing?.ListAgentKey) return;
       try {
-        const data = await getMemberByAgentKey(
-          currentListing.ListAgentKey.toString()
-        );
-        setAgentInfo(data?.[0] || null);
+        const k = currentListing.ListAgentKey.toString();
+        if (agentCacheRef.current.has(k)) {
+          setAgentInfo(agentCacheRef.current.get(k));
+          return;
+        }
+        const data = await getMemberByAgentKey(k);
+        const ai = data?.[0] || null;
+        agentCacheRef.current.set(k, ai);
+        setAgentInfo(ai);
       } catch (err) {
         console.error("Failed to fetch agent info", err);
         setAgentInfo(null);
@@ -288,7 +297,15 @@ const DisplayView = () => {
     let cancelled = false;
     const fetchWeather = async () => {
       try {
-        const currentListingCity = currentListing.City;
+        const currentListingCity = String(currentListing.City).trim();
+        const key = currentListingCity.toLowerCase();
+        const cached = weatherCacheRef.current.get(key);
+        const now = Date.now();
+        // Use cached weather if fresher than 30 minutes
+        if (cached && now - cached.ts < 30 * 60 * 1000) {
+          setWeatherData(cached.data);
+          return;
+        }
 
         const geoRes = await fetch(
           `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
@@ -306,12 +323,14 @@ const DisplayView = () => {
           const weather = await weatherRes.json();
 
           if (!cancelled && weather?.current?.weather?.[0]) {
-            setWeatherData({
+            const data = {
               temp: weather.current.temp,
               desc: weather.current.weather[0].main,
               icon: weather.current.weather[0].icon,
               city: geoData[0].name,
-            });
+            };
+            weatherCacheRef.current.set(key, { ts: now, data });
+            setWeatherData(data);
           }
         }
       } catch (err) {
@@ -326,6 +345,70 @@ const DisplayView = () => {
       cancelled = true;
     };
   }, [currentListing]);
+
+  // Just-in-time prefetch for next listing's agent and weather
+  useEffect(() => {
+    if (!properties.length) return;
+    const lead = Math.min(10000, Math.max(1000, Math.floor(listingSwitchMs * 0.2)));
+    if (prefetchTimeoutRef.current) {
+      clearTimeout(prefetchTimeoutRef.current);
+      prefetchTimeoutRef.current = null;
+    }
+    prefetchTimeoutRef.current = setTimeout(() => {
+      const nextIdx = (currentListingIndex + 1) % properties.length;
+      const next = properties[nextIdx];
+      if (next?.ListAgentKey) {
+        const k = String(next.ListAgentKey);
+        if (!agentCacheRef.current.has(k)) {
+          getMemberByAgentKey(k)
+            .then((data) => {
+              agentCacheRef.current.set(k, data?.[0] || null);
+            })
+            .catch(() => {});
+        }
+      }
+      const apiKey = process.env.REACT_APP_WEATHER_API_KEY;
+      if (apiKey && next?.City) {
+        const key = String(next.City).trim().toLowerCase();
+        const cached = weatherCacheRef.current.get(key);
+        const now = Date.now();
+        if (!cached || now - cached.ts >= 30 * 60 * 1000) {
+          // Pre-resolve weather chain quietly
+          (async () => {
+            try {
+              const geoRes = await fetch(
+                `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(next.City)}&limit=1&appid=${apiKey}`
+              );
+              const geoData = await geoRes.json();
+              if (Array.isArray(geoData) && geoData.length > 0) {
+                const { lat, lon } = geoData[0];
+                const weatherRes = await fetch(
+                  `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`
+                );
+                const weather = await weatherRes.json();
+                if (weather?.current?.weather?.[0]) {
+                  const data = {
+                    temp: weather.current.temp,
+                    desc: weather.current.weather[0].main,
+                    icon: weather.current.weather[0].icon,
+                    city: geoData[0].name,
+                  };
+                  weatherCacheRef.current.set(key, { ts: now, data });
+                }
+              }
+            } catch {}
+          })();
+        }
+      }
+    }, Math.max(0, listingSwitchMs - lead));
+
+    return () => {
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+        prefetchTimeoutRef.current = null;
+      }
+    };
+  }, [properties, currentListingIndex, listingSwitchMs]);
 
   const isFullscreenActive = () =>
     !!(
