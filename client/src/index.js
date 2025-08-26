@@ -19,10 +19,10 @@ const store = configureStore({
 });
 setupListeners(store.dispatch);
 
-// Configure axios to use the API base in production builds
+// Configure axios to use the API base in production builds (no credentials)
 if (API_BASE) {
   axios.defaults.baseURL = API_BASE;
-  axios.defaults.withCredentials = true;
+  axios.defaults.withCredentials = false;
 }
 
 const root = ReactDOM.createRoot(document.getElementById("root"));

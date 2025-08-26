@@ -63,8 +63,8 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
       try {
         const base = API_BASE || "";
         const [lsRes, nsRes] = await Promise.allSettled([
-          fetch(`${base}/api/ddf/stats`, { credentials: base ? "include" : "same-origin" }),
-          fetch(`${base}/api/news/count`, { credentials: base ? "include" : "same-origin" }),
+          fetch(`${base}/api/ddf/stats`, { credentials: "omit" }),
+          fetch(`${base}/api/news/count`, { credentials: "omit" }),
         ]);
         const ls =
           lsRes.status === "fulfilled" && lsRes.value.ok
@@ -150,7 +150,7 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
               // Prefetch images and stash into sessionStorage for quick first paint
               const base = API_BASE || "";
               const res = await fetch(`${base}/api/seasonal/images?t=${Date.now()}`, {
-                credentials: base ? "include" : "same-origin",
+                credentials: "omit",
               });
               if (res.ok) {
                 const data = await res.json();
