@@ -581,3 +581,71 @@ router.get("/rate", async (req, res) => {
     res.status(500).json({ error: "Failed to get rate info" });
   }
 });
+
+// Utility: check if a Cloudinary resource exists
+async function cloudinaryExists(publicId) {
+  try {
+    const c = getCloudinary();
+    if (!c || !c.api) return false;
+    await c.api.resource(publicId);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+// Admin: verify existence of seasonal images on Cloudinary
+router.get("/images/verify", requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(500, Number(req.query.limit) || 100));
+    const items = await SeasonalImage.find({})
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    const out = [];
+    let present = 0;
+    let missing = 0;
+    for (const it of items) {
+      const pub = it.cloudinaryPublicId;
+      if (pub) {
+        const ok = await cloudinaryExists(pub);
+        if (ok) present++; else missing++;
+        out.push({ _id: String(it._id), cloudinaryPublicId: pub, exists: ok, url: it.url });
+      } else {
+        out.push({ _id: String(it._id), cloudinaryPublicId: null, exists: null, url: it.url });
+      }
+    }
+    res.json({ checked: items.length, present, missing, items: out });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to verify images" });
+  }
+});
+
+// Admin: prune DB records whose Cloudinary asset is missing
+router.post("/images/prune-missing", requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(500, Number(req.body?.limit) || 200));
+    const items = await SeasonalImage.find({})
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    let deleted = 0;
+    let missing = 0;
+    let present = 0;
+    for (const it of items) {
+      if (it.cloudinaryPublicId) {
+        const ok = await cloudinaryExists(it.cloudinaryPublicId);
+        if (ok) {
+          present++;
+        } else {
+          missing++;
+          await SeasonalImage.deleteOne({ _id: it._id });
+          deleted++;
+        }
+      }
+    }
+    res.json({ checked: items.length, present, missing, deleted });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to prune images" });
+  }
+});

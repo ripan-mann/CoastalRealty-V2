@@ -25,6 +25,36 @@ router.get('/', async (req, res) => {
     clPing = false;
   }
 
+  // Optional: verify a small sample of Cloudinary resources exist
+  let seasonalVerify = null;
+  const doVerify = String(req.query.verify || '').toLowerCase() === '1';
+  if (doVerify) {
+    try {
+      const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 10));
+      const list = await SeasonalImage.find({ cloudinaryPublicId: { $exists: true, $ne: null } })
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .select({ cloudinaryPublicId: 1 })
+        .lean();
+      const c = getCloudinary();
+      let present = 0;
+      let missing = 0;
+      if (c && c.api && list.length > 0) {
+        for (const it of list) {
+          try {
+            await c.api.resource(it.cloudinaryPublicId);
+            present++;
+          } catch (_) {
+            missing++;
+          }
+        }
+      }
+      seasonalVerify = { checked: list.length, present, missing };
+    } catch (e) {
+      seasonalVerify = { error: 'verification_failed' };
+    }
+  }
+
   res.json({
     status: 'ok',
     now: new Date().toISOString(),
@@ -34,6 +64,7 @@ router.get('/', async (req, res) => {
     db: { connected: dbConnected, state: dbState },
     cloudinary: { configured: cl, ping: clPing },
     seasonal: { count: seasonalCount },
+    seasonalVerify,
   });
 });
 
