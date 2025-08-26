@@ -25,6 +25,7 @@ import {
 import { CircularProgress } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { alpha } from "@mui/material/styles";
+import { API_BASE } from "../../config";
 import {
   getDisplaySettings,
   updateDisplaySettings,
@@ -768,7 +769,10 @@ const DisplaySettings = () => {
             >
               {preview && (
                 <img
-                  src={preview.url}
+                  src={(() => {
+                    const url = preview?.url || "";
+                    return url.startsWith("http") ? url : `${API_BASE || ''}${url}`;
+                  })()}
                   alt={preview.originalName}
                   draggable={false}
                   onDragStart={(e) => e.preventDefault()}
