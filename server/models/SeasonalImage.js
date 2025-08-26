@@ -8,6 +8,8 @@ const SeasonalImageSchema = new mongoose.Schema(
     size: Number,
     mimetype: String,
     url: String,
+    provider: { type: String, default: 'cloudinary' },
+    cloudinaryPublicId: String,
     selected: { type: Boolean, default: false },
   },
   { timestamps: true }

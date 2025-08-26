@@ -5,6 +5,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import SeasonalImage from "../models/SeasonalImage.js";
 import AiGenAttempt from "../models/AiGenAttempt.js";
+import {
+  getCloudinary,
+  uploadBufferToCloudinary,
+  deleteFromCloudinary,
+} from "../utils/cloudinary.js";
 import requireAdmin from "../middleware/requireAdmin.js";
 
 const router = express.Router();
@@ -18,20 +23,16 @@ const baseUploadsDir = path.resolve(
 const uploadDir = path.join(baseUploadsDir, "seasonal");
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || "";
-    cb(null, unique + ext);
-  },
-});
+// Use memory storage because files are uploaded to Cloudinary
+const storage = multer.memoryStorage();
 
 const fileFilter = (_req, file, cb) => {
   const mt = (file.mimetype || "").toLowerCase();
-  if (!mt.startsWith("image/")) return cb(new Error("Only image uploads are allowed"));
+  if (!mt.startsWith("image/"))
+    return cb(new Error("Only image uploads are allowed"));
   // Disallow SVG to avoid embedded script risk
-  if (mt === "image/svg+xml") return cb(new Error("SVG images are not allowed"));
+  if (mt === "image/svg+xml")
+    return cb(new Error("SVG images are not allowed"));
   cb(null, true);
 };
 
@@ -69,25 +70,46 @@ const checkAndConsumeRateMem = (clientKey, eventKey) => {
   }
   arr.push(now);
   memRateMap.set(key, arr);
-  return { allowed: true, remaining: 3 - arr.length, resetInSec: Math.ceil(DAY_MS / 1000) };
+  return {
+    allowed: true,
+    remaining: 3 - arr.length,
+    resetInSec: Math.ceil(DAY_MS / 1000),
+  };
 };
 const checkAndConsumeRateDb = async (clientKey, eventKey) => {
   try {
     const since = new Date(Date.now() - DAY_MS);
-    const count = await AiGenAttempt.countDocuments({ clientKey, eventKey, createdAt: { $gte: since } });
+    const count = await AiGenAttempt.countDocuments({
+      clientKey,
+      eventKey,
+      createdAt: { $gte: since },
+    });
     if (count >= 3) {
-      const oldest = await AiGenAttempt.findOne({ clientKey, eventKey, createdAt: { $gte: since } })
+      const oldest = await AiGenAttempt.findOne({
+        clientKey,
+        eventKey,
+        createdAt: { $gte: since },
+      })
         .sort({ createdAt: 1 })
         .lean();
-      const resetIn = oldest ? DAY_MS - (Date.now() - new Date(oldest.createdAt).getTime()) : DAY_MS;
-      return { allowed: false, remaining: 0, resetInSec: Math.max(1, Math.ceil(resetIn / 1000)) };
+      const resetIn = oldest
+        ? DAY_MS - (Date.now() - new Date(oldest.createdAt).getTime())
+        : DAY_MS;
+      return {
+        allowed: false,
+        remaining: 0,
+        resetInSec: Math.max(1, Math.ceil(resetIn / 1000)),
+      };
     }
     await AiGenAttempt.create({ clientKey, eventKey });
     const remaining = Math.max(0, 3 - (count + 1));
     return { allowed: true, remaining, resetInSec: Math.ceil(DAY_MS / 1000) };
   } catch (err) {
     // Fallback to in-memory if DB unavailable
-    console.warn("Rate DB error, using in-memory fallback:", err?.message || err);
+    console.warn(
+      "Rate DB error, using in-memory fallback:",
+      err?.message || err
+    );
     return checkAndConsumeRateMem(clientKey, eventKey);
   }
 };
@@ -102,9 +124,13 @@ router.get("/images", async (req, res) => {
       Expires: "0",
       "Surrogate-Control": "no-store",
     });
-    const onlySelected = ["1", "true", "yes"].includes(String(req.query.selected || "").toLowerCase());
+    const onlySelected = ["1", "true", "yes"].includes(
+      String(req.query.selected || "").toLowerCase()
+    );
     const query = onlySelected ? { selected: true } : {};
-    const items = await SeasonalImage.find(query).sort({ createdAt: -1 }).lean();
+    const items = await SeasonalImage.find(query)
+      .sort({ createdAt: -1 })
+      .lean();
     const normalized = items.map((it) => ({ ...it, _id: String(it._id) }));
     res.json(normalized);
   } catch (err) {
@@ -112,52 +138,76 @@ router.get("/images", async (req, res) => {
   }
 });
 
-// Upload images (single or multiple)
-router.post("/images", requireAdmin, upload.array("files", 10), async (req, res) => {
-  try {
-    const files = req.files || [];
-    const saved = await Promise.all(
-      files.map(async (f) => {
-        const relPath = ["uploads", "seasonal", f.filename].join("/");
-        const url = `/${relPath}`;
-        return SeasonalImage.create({
+// Upload images (single or multiple) to Cloudinary
+router.post(
+  "/images",
+  requireAdmin,
+  upload.array("files", 10),
+  async (req, res) => {
+    try {
+      const files = req.files || [];
+      const cl = getCloudinary();
+      if (!cl) {
+        return res
+          .status(503)
+          .json({ error: "Cloudinary not configured on server" });
+      }
+      const saved = [];
+      for (const f of files) {
+        const buf = f.buffer;
+        const up = await uploadBufferToCloudinary(
+          buf,
+          f.originalname || undefined
+        );
+        const doc = await SeasonalImage.create({
           originalName: f.originalname,
-          filename: f.filename,
-          path: relPath,
+          filename: up.public_id,
+          path: up.public_id,
           size: f.size,
           mimetype: f.mimetype,
-          url,
+          url: up.secure_url,
           selected: false,
+          provider: "cloudinary",
+          cloudinaryPublicId: up.public_id,
         });
-      })
-    );
-    res.status(201).json(saved);
-  } catch (err) {
-    console.error("Upload error:", err.message);
-    res.status(500).json({ error: "Failed to upload images" });
+        saved.push(doc);
+      }
+      res.status(201).json(saved);
+    } catch (err) {
+      const msg = err?.message || String(err);
+      console.error("Upload error:", msg);
+      const body =
+        (process.env.NODE_ENV || "development") === "production"
+          ? { error: "Failed to upload images" }
+          : { error: `Failed to upload images: ${msg}` };
+      res.status(500).json(body);
+    }
   }
-});
+);
 
 // Delete image
 router.delete("/images/:id", requireAdmin, async (req, res) => {
   try {
     const doc = await SeasonalImage.findById(req.params.id);
     if (!doc) return res.status(404).json({ error: "Not found" });
-    // Validate DB path and ensure it is under the seasonal uploads directory
-    if (!doc.path || typeof doc.path !== "string" || !doc.path.startsWith("uploads/seasonal/")) {
-      return res.status(400).json({ error: "Invalid path" });
-    }
-    const uploadsRoot = path.resolve(path.join(baseUploadsDir, "seasonal"));
-    const relUnderUploads = String(doc.path).replace(/^uploads[\/]/, "");
-    const abs = path.resolve(path.join(baseUploadsDir, relUnderUploads));
-    // Ensure the resolved path lives under the seasonal uploads directory
-    if (!abs.startsWith(uploadsRoot)) {
-      return res.status(400).json({ error: "Invalid path" });
-    }
-    try {
-      fs.unlinkSync(abs);
-    } catch (e) {
-      // ignore missing file
+    // If exists on Cloudinary, delete there; else try local file cleanup for legacy entries
+    if (doc.cloudinaryPublicId) {
+      try {
+        await deleteFromCloudinary(doc.cloudinaryPublicId);
+      } catch (_) {}
+    } else if (
+      doc.path &&
+      typeof doc.path === "string" &&
+      doc.path.startsWith("uploads/seasonal/")
+    ) {
+      const uploadsRoot = path.resolve(path.join(baseUploadsDir, "seasonal"));
+      const relUnderUploads = String(doc.path).replace(/^uploads[\/]/, "");
+      const abs = path.resolve(path.join(baseUploadsDir, relUnderUploads));
+      if (abs.startsWith(uploadsRoot)) {
+        try {
+          fs.unlinkSync(abs);
+        } catch (_) {}
+      }
     }
     await SeasonalImage.deleteOne({ _id: doc._id });
     res.json({ success: true });
@@ -218,7 +268,7 @@ router.post("/generate", requireAdmin, async (req, res) => {
       baseURL: process.env.OPENAI_BASE_URL || undefined,
     });
     const basePrompt =
-      "Generate a high-resolution landscape image (1920x1080) for a realtor’s office lobby TV display. The image should visually represent the specified holiday or seasonal event in a professional, welcoming style. Do not include any extra text, logos, or branding. The only text allowed in the image is the name of the holiday or event.";
+      "Generate a high-resolution landscape image (1920x1080). The image should visually represent the specified holiday or seasonal event in a professional, welcoming style. Do not include any extra text, logos, or branding. The only text allowed in the image is the name of the holiday or event.";
     const prompt = `${basePrompt}\nHoliday or Event Title: ${title}`;
 
     // If preview mode requested, enforce DB-backed rate limit BEFORE generating
@@ -232,7 +282,12 @@ router.post("/generate", requireAdmin, async (req, res) => {
           "X-RateLimit-Remaining": String(rate.remaining),
           "Retry-After": String(rate.resetInSec),
         });
-        return res.status(429).json({ error: "Daily AI generation limit reached for this event.", resetInSec: rate.resetInSec });
+        return res
+          .status(429)
+          .json({
+            error: "Daily AI generation limit reached for this event.",
+            resetInSec: rate.resetInSec,
+          });
       }
 
       let imageB64 = null;
@@ -254,15 +309,32 @@ router.post("/generate", requireAdmin, async (req, res) => {
           });
           imageB64 = alt?.data?.[0]?.b64_json;
         } catch (fallbackErr) {
-          console.error("OpenAI image error:", primaryErr?.message || primaryErr, fallbackErr?.message || fallbackErr);
-          return res.status(502).json({ error: primaryErr?.response?.data?.error?.message || fallbackErr?.response?.data?.error?.message || "Failed to generate image" });
+          console.error(
+            "OpenAI image error:",
+            primaryErr?.message || primaryErr,
+            fallbackErr?.message || fallbackErr
+          );
+          return res
+            .status(502)
+            .json({
+              error:
+                primaryErr?.response?.data?.error?.message ||
+                fallbackErr?.response?.data?.error?.message ||
+                "Failed to generate image",
+            });
         }
       }
-      if (!imageB64) return res.status(502).json({ error: "Failed to generate image" });
-      return res.json({ b64: imageB64, mimetype: "image/png", title, rate: { remaining: rate.remaining, resetInSec: rate.resetInSec } });
+      if (!imageB64)
+        return res.status(502).json({ error: "Failed to generate image" });
+      return res.json({
+        b64: imageB64,
+        mimetype: "image/png",
+        title,
+        rate: { remaining: rate.remaining, resetInSec: rate.resetInSec },
+      });
     }
 
-    // Otherwise, persist to disk and DB immediately
+    // Otherwise, persist to Cloudinary and DB immediately
     // Generate a fresh image for persistence
     let imageB64 = null;
     try {
@@ -283,27 +355,35 @@ router.post("/generate", requireAdmin, async (req, res) => {
         });
         imageB64 = alt?.data?.[0]?.b64_json;
       } catch (fallbackErr) {
-        console.error("OpenAI image error (persist):", primaryErr?.message || primaryErr, fallbackErr?.message || fallbackErr);
-        return res.status(502).json({ error: primaryErr?.response?.data?.error?.message || fallbackErr?.response?.data?.error?.message || "Failed to generate image" });
+        console.error(
+          "OpenAI image error (persist):",
+          primaryErr?.message || primaryErr,
+          fallbackErr?.message || fallbackErr
+        );
+        return res
+          .status(502)
+          .json({
+            error:
+              primaryErr?.response?.data?.error?.message ||
+              fallbackErr?.response?.data?.error?.message ||
+              "Failed to generate image",
+          });
       }
     }
-    if (!imageB64) return res.status(502).json({ error: "Failed to generate image" });
+    if (!imageB64)
+      return res.status(502).json({ error: "Failed to generate image" });
     const buf = Buffer.from(imageB64, "base64");
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = `ai-${unique}.png`;
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, buf);
-
-    const relPath = ["uploads", "seasonal", filename].join("/");
-    const url = `/${relPath}`;
+    const up = await uploadBufferToCloudinary(buf, `${title}.png`);
     const doc = await SeasonalImage.create({
       originalName: `${title} (AI)`,
-      filename,
-      path: relPath,
+      filename: up.public_id,
+      path: up.public_id,
       size: buf.length,
       mimetype: "image/png",
-      url,
+      url: up.secure_url,
       selected: false,
+      provider: "cloudinary",
+      cloudinaryPublicId: up.public_id,
     });
 
     res.status(201).json(doc);
@@ -325,21 +405,17 @@ router.post("/generate/use", requireAdmin, async (req, res) => {
         ? eventTitle.trim()
         : "Seasonal Event";
     const buf = Buffer.from(b64, "base64");
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = `ai-${unique}.png`;
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, buf);
-
-    const relPath = ["uploads", "seasonal", filename].join("/");
-    const url = `/${relPath}`;
+    const up = await uploadBufferToCloudinary(buf, `${title}.png`);
     const doc = await SeasonalImage.create({
       originalName: `${title} (AI)`,
-      filename,
-      path: relPath,
+      filename: up.public_id,
+      path: up.public_id,
       size: buf.length,
       mimetype: "image/png",
-      url,
+      url: up.secure_url,
       selected: false,
+      provider: "cloudinary",
+      cloudinaryPublicId: up.public_id,
     });
     res.status(201).json(doc);
   } catch (err) {
@@ -353,14 +429,18 @@ router.post("/payments/checkout", requireAdmin, async (req, res) => {
   try {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
-      return res.status(503).json({ error: "Payments disabled. Missing STRIPE_SECRET_KEY." });
+      return res
+        .status(503)
+        .json({ error: "Payments disabled. Missing STRIPE_SECRET_KEY." });
     }
     const { eventTitle, b64 } = req.body || {};
     if (!b64 || typeof b64 !== "string") {
       return res.status(400).json({ error: "Missing image data" });
     }
     const title =
-      typeof eventTitle === "string" && eventTitle.trim() ? eventTitle.trim() : "Seasonal Event";
+      typeof eventTitle === "string" && eventTitle.trim()
+        ? eventTitle.trim()
+        : "Seasonal Event";
 
     // Stash preview in memory and refer to it via tmpId
     const tmpId = Date.now() + "-" + Math.round(Math.random() * 1e9);
@@ -399,7 +479,9 @@ router.post("/generate/confirm", requireAdmin, async (req, res) => {
   try {
     const key = process.env.STRIPE_SECRET_KEY;
     if (!key) {
-      return res.status(503).json({ error: "Payments disabled. Missing STRIPE_SECRET_KEY." });
+      return res
+        .status(503)
+        .json({ error: "Payments disabled. Missing STRIPE_SECRET_KEY." });
     }
     const { tmpId, sessionId } = req.body || {};
     if (!tmpId || !sessionId) {
@@ -418,21 +500,17 @@ router.post("/generate/confirm", requireAdmin, async (req, res) => {
 
     const { b64, title } = item;
     const buf = Buffer.from(b64, "base64");
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = `ai-${unique}.png`;
-    const filePath = path.join(uploadDir, filename);
-    fs.writeFileSync(filePath, buf);
-
-    const relPath = ["uploads", "seasonal", filename].join("/");
-    const url = `/${relPath}`;
+    const up = await uploadBufferToCloudinary(buf, `${title}.png`);
     const doc = await SeasonalImage.create({
       originalName: `${title} (AI)`,
-      filename,
-      path: relPath,
+      filename: up.public_id,
+      path: up.public_id,
       size: buf.length,
       mimetype: "image/png",
-      url,
+      url: up.secure_url,
       selected: false,
+      provider: "cloudinary",
+      cloudinaryPublicId: up.public_id,
     });
 
     previewStore.delete(String(tmpId));
@@ -453,28 +531,47 @@ router.get("/rate", async (req, res) => {
     const now = Date.now();
     const cached = rateCache.get(cacheKey);
     if (cached && now - cached.ts < 60 * 1000) {
-      return res.json({ remaining: cached.remaining, resetInSec: cached.resetInSec });
+      return res.json({
+        remaining: cached.remaining,
+        resetInSec: cached.resetInSec,
+      });
     }
     // Try DB first; if it fails, compute from in-memory
     let remaining = 3;
     let resetInSec = Math.ceil(DAY_MS / 1000);
     try {
       const since = new Date(Date.now() - DAY_MS);
-      const attempts = await AiGenAttempt.find({ clientKey, eventKey, createdAt: { $gte: since } })
+      const attempts = await AiGenAttempt.find({
+        clientKey,
+        eventKey,
+        createdAt: { $gte: since },
+      })
         .sort({ createdAt: 1 })
         .lean();
       const count = attempts.length;
       remaining = Math.max(0, 3 - count);
       if (attempts[0]) {
-        resetInSec = Math.max(1, Math.ceil((DAY_MS - (Date.now() - new Date(attempts[0].createdAt).getTime())) / 1000));
+        resetInSec = Math.max(
+          1,
+          Math.ceil(
+            (DAY_MS -
+              (Date.now() - new Date(attempts[0].createdAt).getTime())) /
+              1000
+          )
+        );
       }
     } catch (err) {
       const key = `${clientKey}|${eventKey}`;
-      const arr = (memRateMap.get(key) || []).filter((ts) => Date.now() - ts < DAY_MS);
+      const arr = (memRateMap.get(key) || []).filter(
+        (ts) => Date.now() - ts < DAY_MS
+      );
       remaining = Math.max(0, 3 - arr.length);
       if (arr.length > 0) {
         const oldest = Math.min(...arr);
-        resetInSec = Math.max(1, Math.ceil((DAY_MS - (Date.now() - oldest)) / 1000));
+        resetInSec = Math.max(
+          1,
+          Math.ceil((DAY_MS - (Date.now() - oldest)) / 1000)
+        );
       }
     }
     rateCache.set(cacheKey, { remaining, resetInSec, ts: now });

@@ -10,6 +10,7 @@ import newsRoutes from "./routes/news.js";
 import newsSummaryRoutes from "./routes/newsSummary.js";
 import settingsRoutes from "./routes/settings.js";
 import holidaysRoutes from "./routes/holidays.js";
+import healthRoutes from "./routes/health.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
@@ -73,6 +74,7 @@ app.use("/api/news", newsRoutes); /*news*/
 app.use("/api/news-summary", newsSummaryRoutes); /*news summary*/
 app.use("/api/settings", settingsRoutes); /*display settings*/
 app.use("/api/holidays", holidaysRoutes); /*holidays*/
+app.use("/api/health", healthRoutes); /*health check*/
 /* seasonal uploads */
 (() => {
   const mountFallback = (reason) => {
