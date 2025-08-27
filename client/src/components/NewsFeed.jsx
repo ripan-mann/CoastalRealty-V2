@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useSelector } from "react-redux";
 import { Paper, Typography, Box } from "@mui/material";
+import { useTheme, alpha } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 import { API_BASE } from "../config";
-const FEED_ENDPOINT = `${API_BASE || ''}/api/news`;
-const SUMMARY_ENDPOINT = `${API_BASE || ''}/api/news-summary`;
+const FEED_ENDPOINT = `${API_BASE || ""}/api/news`;
+const SUMMARY_ENDPOINT = `${API_BASE || ""}/api/news-summary`;
 
 const removeSourceSuffix = (text, source) => {
   if (!text || !source) return text;
@@ -13,7 +15,8 @@ const removeSourceSuffix = (text, source) => {
 };
 
 const NewsFeed = () => {
-  // const theme = useTheme();
+  const theme = useTheme();
+  const isMobile = useMediaQuery("(max-width:900px)");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +55,9 @@ const NewsFeed = () => {
         const baseItems = itemsArray.slice(0, MAX_ITEMS).map((item) => {
           const title = item.querySelector("title")?.textContent || "No title";
           const link = item.querySelector("link")?.textContent || "#";
-          const source = (item.querySelector("source")?.textContent || "Unknown").trim();
+          const source = (
+            item.querySelector("source")?.textContent || "Unknown"
+          ).trim();
           const pubDate = item.querySelector("pubDate")?.textContent || "";
           const cleanTitle = removeSourceSuffix(title, source).trim();
           return {
@@ -80,7 +85,7 @@ const NewsFeed = () => {
   }, [items]);
 
   // Fetch summary for a single index if not already present/in-flight
-  const fetchSummary = async (idx) => {
+  const fetchSummary = useCallback(async (idx) => {
     const cur = itemsRef.current[idx];
     if (!cur) return;
     if (cur.description && cur.description !== "") return;
@@ -91,7 +96,7 @@ const NewsFeed = () => {
       const res = await fetch(SUMMARY_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: cur.title }),
+        body: JSON.stringify({ title: cur.title, sentences: isMobile ? 6 : 3 }),
       });
       if (!res.ok) throw new Error("bad response");
       const data = await res.json();
@@ -117,7 +122,7 @@ const NewsFeed = () => {
     } finally {
       inFlightRef.current.delete(key);
     }
-  };
+  }, [isMobile]);
 
   // Rotation + just-in-time prefetch
   useEffect(() => {
@@ -141,7 +146,7 @@ const NewsFeed = () => {
         prefetchTimeoutRef.current = null;
       }
     };
-  }, [items.length, currentIndex, rotationMs, prefetchLeadMs]);
+  }, [items.length, currentIndex, rotationMs, prefetchLeadMs, fetchSummary]);
 
   useEffect(() => {
     if (!items.length) return;
@@ -174,13 +179,113 @@ const NewsFeed = () => {
 
   const current = items[currentIndex];
 
-  return (
+  const mobileCard = (
+    <Paper
+      sx={{
+        p: { xs: 3, md: 4 },
+        pt: { xs: 10, md: 15 },
+        width: "100%",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        gap: 1.75,
+        borderRadius: 0,
+        boxShadow: "none",
+        background: `linear-gradient(180deg, ${alpha(
+          theme.palette.common.white,
+          1
+        )} 0%, ${alpha(theme.palette.primary.light, 0.1)} 100%)`,
+        borderTop: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+        borderBottom: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
+      }}
+    >
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: { xs: "1.1rem", md: "1.2rem" },
+            letterSpacing: "0.08em",
+            fontWeight: 900,
+            color: theme.palette.primary.dark,
+            bgcolor: alpha(theme.palette.primary.dark, 0.18),
+            border: `1px solid ${alpha(theme.palette.primary.dark, 0.35)}`,
+            px: 1.5,
+            py: 0.75,
+            borderRadius: 2,
+            textTransform: "uppercase",
+          }}
+        >
+          Top News
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: { xs: "1rem", md: "1.1rem" },
+            color: theme.palette.text.secondary,
+          }}
+        >
+          {current.source}
+        </Typography>
+      </Box>
+
+      <Typography
+        component="h3"
+        sx={{
+          pt: 5,
+          fontSize: { xs: "2.2rem", md: "3rem" },
+          fontWeight: 900,
+          lineHeight: 1.2,
+        }}
+      >
+        <a
+          href={current.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: theme.palette.text.primary, textDecoration: "none" }}
+        >
+          {current.title}
+        </a>
+      </Typography>
+
+      <Typography
+        sx={{
+          pt: 3,
+          fontSize: { xs: "1.5rem", md: "2.5rem" },
+          color: theme.palette.text.secondary,
+          lineHeight: 1.65,
+        }}
+      >
+        {current.description || "Generating summary…"}
+      </Typography>
+
+      <Box sx={{ flexGrow: 1 }} />
+
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <Typography
+          sx={{
+            fontSize: { xs: "0.85rem", md: "0.95rem" },
+            color: theme.palette.text.disabled,
+            zIndex: 1000000,
+          }}
+        >
+          Swipe up for listings
+        </Typography>
+      </Box>
+    </Paper>
+  );
+
+  const desktopCard = (
     <Paper
       sx={{
         p: 2,
-        // backgroundColor: theme.palette.grey[100],
         width: "70%",
         boxShadow: 0,
+        backgroundColor: "transparent",
       }}
     >
       <Typography variant="h6" gutterBottom>
@@ -202,26 +307,24 @@ const NewsFeed = () => {
           {current.description}
         </Typography>
       ) : (
-        <Typography variant="body2" fontSize="1rem" gutterBottom color="text.secondary">
+        <Typography
+          variant="body2"
+          fontSize="1rem"
+          gutterBottom
+          color="text.secondary"
+        >
           Generating summary…
         </Typography>
       )}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          mt: 1,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
         <Typography variant="caption" color="text.secondary">
           {current.source}
         </Typography>
-        {/* <Typography variant="caption" color="text.secondary">
-          {current.pubDate}
-        </Typography> */}
       </Box>
     </Paper>
   );
+
+  return isMobile ? mobileCard : desktopCard;
 };
 
 export default NewsFeed;

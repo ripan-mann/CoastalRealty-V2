@@ -19,6 +19,7 @@ import {
   Stack,
   Divider,
 } from "@mui/material";
+import { useMediaQuery } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import BedIcon from "@mui/icons-material/Bed";
@@ -89,6 +90,9 @@ const DisplayView = () => {
   const overlayOpenRef = useRef(false);
   const displayedListingKeysRef = useRef([]);
   const theme = useTheme();
+  const isSmall = useMediaQuery("(max-width:900px)");
+  const topPad = isSmall ? 2 : isFullscreen ? 3 : 0;
+  const bottomPad = isSmall ? 3 : 0;
   const dispatch = useDispatch();
   const displaySettings = useSelector((s) => s.global.displaySettings);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -349,7 +353,10 @@ const DisplayView = () => {
   // Just-in-time prefetch for next listing's agent and weather
   useEffect(() => {
     if (!properties.length) return;
-    const lead = Math.min(10000, Math.max(1000, Math.floor(listingSwitchMs * 0.2)));
+    const lead = Math.min(
+      10000,
+      Math.max(1000, Math.floor(listingSwitchMs * 0.2))
+    );
     if (prefetchTimeoutRef.current) {
       clearTimeout(prefetchTimeoutRef.current);
       prefetchTimeoutRef.current = null;
@@ -377,7 +384,9 @@ const DisplayView = () => {
           (async () => {
             try {
               const geoRes = await fetch(
-                `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(next.City)}&limit=1&appid=${apiKey}`
+                `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+                  next.City
+                )}&limit=1&appid=${apiKey}`
               );
               const geoData = await geoRes.json();
               if (Array.isArray(geoData) && geoData.length > 0) {
@@ -544,7 +553,16 @@ const DisplayView = () => {
 
   return (
     <Fade in={fadeIn} timeout={500} appear={false}>
-      <Box sx={{ position: "relative", height: "100vh", overflow: "hidden" }}>
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: "auto", md: "100vh" },
+          overflowY: { xs: "auto", md: "hidden" },
+          overflowX: "hidden",
+          scrollSnapType: { xs: "y proximity", md: "y proximity", lg: "none" },
+          scrollBehavior: "smooth",
+        }}
+      >
         <Fade
           in={overlayOpen && seasonalImages.length > 0}
           timeout={300}
@@ -601,17 +619,18 @@ const DisplayView = () => {
           sx={{
             display: "flex",
             flexDirection: "column",
-            height: "100%",
+            height: { xs: "auto", md: "100%" },
             boxSizing: "border-box",
-            pt: isFullscreen ? 3 : 0,
-            overflow: "hidden",
+            pt: topPad,
+            pb: bottomPad,
+            overflowY: { xs: "visible", md: "hidden" },
           }}
         >
           <Grid
             container
             sx={{
               flexDirection: "column",
-              height: "100%",
+              height: { xs: "auto", md: "auto", lg: "100%" },
               gap: 2,
             }}
           >
@@ -620,19 +639,27 @@ const DisplayView = () => {
               item
               sx={{
                 flexGrow: 1,
-                overflow: "hidden",
-                minHeight: 0,
-                height: { xs: "60vh", md: "70vh", lg: "75vh" },
+                overflow: { xs: "visible", md: "visible", lg: "hidden" },
+                minHeight: { md: 0 },
+                height: { xs: "auto", md: "auto", lg: "75vh" },
+                scrollSnapAlign: { xs: 'start', md: 'start', lg: 'none' },
               }}
             >
-              <Grid container spacing={2} wrap="nowrap" sx={{ height: "100%" }}>
+              <Grid
+                container
+                // spacing={2}
+                sx={{
+                  height: { xs: "auto", md: "auto", lg: "100%" },
+                  flexWrap: { xs: "wrap", md: "wrap", lg: "nowrap" },
+                }}
+              >
                 {/* Column 1: Agent Info, Property Info, QR Code */}
                 <Grid
                   item
                   sx={{
                     flexShrink: 0,
-                    flexBasis: { xs: "100%", md: "25%" },
-                    maxWidth: { xs: "100%", md: "25%" },
+                    flexBasis: { xs: "100%", md: "100%", lg: "25%" },
+                    maxWidth: { xs: "100%", md: "100%", lg: "25%" },
                   }}
                 >
                   <Stack spacing={2} sx={{ width: "100%" }}>
@@ -709,9 +736,7 @@ const DisplayView = () => {
                           variant="h3"
                           fontWeight="bold"
                           gutterBottom
-                          sx={{
-                            color: theme.palette.secondary[200],
-                          }}
+                          sx={{ color: theme.palette.secondary[200] }}
                         >
                           {`${currentListing.StreetNumber || ""} ${
                             currentListing.StreetName || ""
@@ -844,18 +869,14 @@ const DisplayView = () => {
                         <Typography
                           variant="h3"
                           fontWeight="bold"
-                          sx={{
-                            mb: 1,
-                          }}
+                          sx={{ mb: 1 }}
                         >
                           Mortgage Estimate
                         </Typography>
                         <Typography
                           variant="h4"
                           fontWeight="bold"
-                          sx={{
-                            color: theme.palette.secondary[200],
-                          }}
+                          sx={{ color: theme.palette.secondary[200] }}
                         >
                           ${monthlyMortgage}/month
                         </Typography>
@@ -881,11 +902,11 @@ const DisplayView = () => {
                   item
                   sx={{
                     flexGrow: 1,
-                    flexBasis: { xs: "100%", md: "75%" },
-                    maxWidth: { xs: "100%", md: "75%" },
-                    height: { xs: "60vh", md: "70vh", lg: "75vh" },
-                    overflow: "hidden",
-                    pr: 2,
+                    flexBasis: { xs: "100%", md: "100%", lg: "75%" },
+                    maxWidth: { xs: "100%", md: "100%", lg: "75%" },
+                    height: { xs: "auto", md: "auto", lg: "75vh" },
+                    overflow: { xs: "visible", md: "visible", lg: "hidden" },
+                    pr: { xs: 0, md: 0, lg: 2 },
                     zIndex: 99,
                   }}
                 >
@@ -893,20 +914,24 @@ const DisplayView = () => {
                     container
                     spacing={0}
                     sx={{
-                      height: "100%",
+                      height: { xs: "auto", md: "auto", lg: "100%" },
                       display: "flex",
                       flexWrap: "wrap",
-                      minHeight: 0,
+                      minHeight: { lg: 0 },
                     }}
                   >
                     {currentPhotoSet?.slice(0, 6).map((media, index) => (
                       <Grid
                         item
                         key={index}
-                        xs={6}
+                        xs={12}
                         sx={{
-                          width: "50%",
-                          height: "calc(100% / 3)", // Each row gets 1/3 height
+                          width: { xs: "100%", md: "100%", lg: "50%" },
+                          height: {
+                            xs: "auto",
+                            md: "auto",
+                            lg: "calc(100% / 3)",
+                          },
                           p: 0.5,
                           boxSizing: "border-box",
                         }}
@@ -914,8 +939,12 @@ const DisplayView = () => {
                         <Box
                           sx={{
                             width: "100%",
-                            height: "100%",
-                            overflow: "hidden",
+                            height: { xs: "auto", md: "auto", lg: "100%" },
+                            overflow: {
+                              xs: "visible",
+                              md: "visible",
+                              lg: "hidden",
+                            },
                             borderRadius: 1,
                           }}
                         >
@@ -925,8 +954,12 @@ const DisplayView = () => {
                             alt={`Property ${index + 1}`}
                             sx={{
                               width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
+                              height: { xs: "auto", md: "auto", lg: "100%" },
+                              objectFit: {
+                                xs: "contain",
+                                md: "contain",
+                                lg: "cover",
+                              },
                             }}
                           />
                         </Box>
@@ -937,62 +970,54 @@ const DisplayView = () => {
               </Grid>
             </Grid>
 
-            {/* Row 2: Logo, News and QR */}
-            <Grid
-              item
-              sx={{
-                position: "relative",
-                zIndex: 3,
-                mt: "auto",
-                // backgroundColor: theme.palette.grey[100],
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  // flexWrap: "wrap",
-                  width: "100%",
-                  // position: "absolute",
-                  // bottom: 0,
-                  // left: 0,
-                }}
-              >
-                <Box>
-                  <Box
-                    component="img"
-                    src={realtyImage}
-                    alt="Century 21 Logo"
-                    sx={{ maxHeight: { xs: 150, lg: 180 } }}
-                  />
+            {/* Row 2 */}
+            {isSmall ? (
+              // On mobile/tablet: show News only with full-width modern card
+              <Grid item sx={{ scrollSnapAlign: 'start' }} id="news">
+                <Box sx={{ px: 2, width: "100%" }}>
+                  <Suspense fallback={null}>
+                    <NewsFeedLazy />
+                  </Suspense>
                 </Box>
-
-                <Suspense fallback={null}>
-                  <NewsFeedLazy />
-                </Suspense>
-                <Paper
-                  elevation={3}
+              </Grid>
+            ) : (
+              // On desktop: show Logo, News, QR row
+              <Grid item sx={{ position: "relative", zIndex: 3, mt: "auto" }}>
+                <Box
                   sx={{
-                    mr: 8,
-                    ml: 8,
-                    // p: 2,
-                    textAlign: "center",
-                    boxShadow: 0,
-                    // backgroundColor: theme.palette.grey[100],
+                    display: "flex",
+                    alignItems: "flex-start",
+                    width: "100%",
                   }}
                 >
-                  <Box sx={{ display: "flex", justifyContent: "center" }}>
-                    <QRCodeCanvas
-                      value={`https://${currentListing.ListingURL}`}
-                      size={120}
-                      style={{
-                        backgroundColor: theme.palette.background.primary,
-                      }}
+                  <Box>
+                    <Box
+                      component="img"
+                      src={realtyImage}
+                      alt="Century 21 Logo"
+                      sx={{ maxHeight: { xs: 150, lg: 180 } }}
                     />
                   </Box>
-                </Paper>
-              </Box>
-            </Grid>
+                  <Suspense fallback={null}>
+                    <NewsFeedLazy />
+                  </Suspense>
+                  <Paper
+                    elevation={3}
+                    sx={{ mr: 8, ml: 8, textAlign: "center", boxShadow: 0 }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <QRCodeCanvas
+                        value={`https://${currentListing.ListingURL}`}
+                        size={120}
+                        style={{
+                          backgroundColor: theme.palette.background.primary,
+                        }}
+                      />
+                    </Box>
+                  </Paper>
+                </Box>
+              </Grid>
+            )}
           </Grid>
         </Box>
         {/* Small banner with active intervals (only show when not fullscreen) */}

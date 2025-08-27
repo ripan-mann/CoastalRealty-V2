@@ -9,3 +9,15 @@ body,
     font-family: "Inter", sans-serif;
     overflow: hidden;
 }
+
+/* Allow scrolling on small screens */
+@media (max-width: 900px) {
+  html,
+  body,
+  #root,
+  .app {
+      height: auto;
+      min-height: 100vh;
+      overflow: auto;
+  }
+}
