@@ -273,8 +273,13 @@ const DisplayView = () => {
 
   useEffect(() => {
     const fetchAgent = async () => {
-      if (!currentListing?.ListAgentKey) return;
+      if (!currentListing?.ListAgentKey) {
+        setAgentInfo(null);
+        return;
+      }
       try {
+        // Clear previous agent so we never show stale details while switching
+        setAgentInfo(null);
         const k = currentListing.ListAgentKey.toString();
         if (agentCacheRef.current.has(k)) {
           setAgentInfo(agentCacheRef.current.get(k));
@@ -661,6 +666,8 @@ const DisplayView = () => {
                     flexBasis: { xs: "100%", md: "100%", lg: "25%" },
                     maxWidth: { xs: "100%", md: "100%", lg: "25%" },
                   }}
+                  // Force fresh mount when listing changes to avoid any stale UI
+                  key={currentListing?.ListingKey ?? currentListingIndex}
                 >
                   <Stack spacing={2} sx={{ width: "100%" }}>
                     <Paper
