@@ -695,7 +695,6 @@ const DisplayView = () => {
           >
             {/* Row 1: Agent and Photos */}
             <Grid
-              item
               sx={{
                 flexGrow: 1,
                 overflow: { xs: "visible", md: "visible", lg: "hidden" },
@@ -714,7 +713,6 @@ const DisplayView = () => {
               >
                 {/* Column 1: Agent Info, Property Info, QR Code */}
                 <Grid
-                  item
                   sx={{
                     flexShrink: 0,
                     flexBasis: { xs: "100%", md: "100%", lg: "25%" },
@@ -960,7 +958,6 @@ const DisplayView = () => {
 
                 {/* Column 2: Photo Grid */}
                 <Grid
-                  item
                   sx={{
                     flexGrow: 1,
                     flexBasis: { xs: "100%", md: "100%", lg: "75%" },
@@ -983,9 +980,7 @@ const DisplayView = () => {
                   >
                     {currentPhotoSet?.slice(0, 6).map((media, index) => (
                       <Grid
-                        item
                         key={index}
-                        xs={12}
                         sx={{
                           width: { xs: "100%", md: "100%", lg: "50%" },
                           height: {
@@ -1038,7 +1033,7 @@ const DisplayView = () => {
             {/* Row 2 */}
             {isSmall ? (
               // On mobile/tablet: show News only with full-width modern card
-              <Grid item sx={{ scrollSnapAlign: "start" }} id="news">
+              <Grid sx={{ scrollSnapAlign: "start" }} id="news">
                 <Box sx={{ px: 2, width: "100%" }}>
                   <Suspense fallback={null}>
                     <NewsFeedLazy />
@@ -1047,7 +1042,7 @@ const DisplayView = () => {
               </Grid>
             ) : (
               // On desktop: show Logo, News, QR row
-              <Grid item sx={{ position: "relative", zIndex: 3, mt: "auto" }}>
+              <Grid sx={{ position: "relative", zIndex: 3, mt: "auto" }}>
                 <Box
                   sx={{
                     display: "flex",
