@@ -435,17 +435,49 @@ const DisplayView = () => {
       document.msFullscreenElement
     );
 
+  // Maintain a wake lock when fullscreen to prevent the display from sleeping
+  const wakeLockRef = useRef(null);
+
+  const requestWakeLock = React.useCallback(async () => {
+    try {
+      if ("wakeLock" in navigator && wakeLockRef.current === null) {
+        const sentinel = await navigator.wakeLock.request("screen");
+        wakeLockRef.current = sentinel;
+        sentinel.addEventListener("release", () => {
+          wakeLockRef.current = null;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to obtain wake lock", err);
+      wakeLockRef.current = null;
+    }
+  }, []);
+
+  const releaseWakeLock = React.useCallback(() => {
+    try {
+      const sentinel = wakeLockRef.current;
+      if (sentinel) {
+        sentinel.release();
+        wakeLockRef.current = null;
+      }
+    } catch (err) {
+      console.error("Failed to release wake lock", err);
+    }
+  }, []);
+
   const handleFullscreenChange = React.useCallback(() => {
     const active = isFullscreenActive();
     setIsFullscreen(active);
     if (active) {
       setIsSidebarOpen(false);
       setIsNavbarVisible(false);
+      requestWakeLock();
     } else {
       setIsSidebarOpen(true);
       setIsNavbarVisible(true);
+      releaseWakeLock();
     }
-  }, [setIsSidebarOpen, setIsNavbarVisible]);
+  }, [setIsSidebarOpen, setIsNavbarVisible, requestWakeLock, releaseWakeLock]);
 
   useEffect(() => {
     document.addEventListener("fullscreenchange", handleFullscreenChange);
@@ -468,6 +500,22 @@ const DisplayView = () => {
       );
     };
   }, [handleFullscreenChange]);
+
+  // Reapply wake lock if the page becomes visible again while fullscreen
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && isFullscreenActive()) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [requestWakeLock]);
+
+  // Release any wake lock on unmount
+  useEffect(() => () => releaseWakeLock(), [releaseWakeLock]);
 
   const toggleFullscreen = () => {
     const element = document.documentElement;
