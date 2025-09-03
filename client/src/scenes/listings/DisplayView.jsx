@@ -46,6 +46,7 @@ import realtyImage from "assets/c21-logo.png";
 import defaultProfile from "assets/profile.png";
 import { QRCodeCanvas } from "qrcode.react";
 import { useOutletContext } from "react-router-dom";
+import { normalizeUrl, isResolvableUrl } from "../../utils/url";
 const NewsFeedLazy = lazy(() => import("../../components/NewsFeed"));
 
 // Intervals are configured from backend settings; defaults apply if not loaded
@@ -61,6 +62,8 @@ const calculateMortgage = (listPrice) => {
     (1 - Math.pow(1 + interestRate, -numberOfPayments));
   return monthlyPayment.toFixed(2);
 };
+
+const placeholderImage = "/client/src/assets/c21-logo.png";
 
 const DisplayView = () => {
   const [properties, setProperties] = useState([]);
@@ -555,6 +558,9 @@ const DisplayView = () => {
   }
 
   const monthlyMortgage = calculateMortgage(currentListing.ListPrice);
+  const listingUrl = isResolvableUrl(currentListing?.ListingURL)
+    ? normalizeUrl(currentListing.ListingURL)
+    : null;
 
   return (
     <Fade in={fadeIn} timeout={500} appear={false}>
@@ -647,7 +653,7 @@ const DisplayView = () => {
                 overflow: { xs: "visible", md: "visible", lg: "hidden" },
                 minHeight: { md: 0 },
                 height: { xs: "auto", md: "auto", lg: "75vh" },
-                scrollSnapAlign: { xs: 'start', md: 'start', lg: 'none' },
+                scrollSnapAlign: { xs: "start", md: "start", lg: "none" },
               }}
             >
               <Grid
@@ -957,7 +963,11 @@ const DisplayView = () => {
                         >
                           <Box
                             component="img"
-                            src={media.MediaURL}
+                            src={
+                              isResolvableUrl(media.MediaURL)
+                                ? media.MediaURL
+                                : placeholderImage
+                            }
                             alt={`Property ${index + 1}`}
                             sx={{
                               width: "100%",
@@ -980,7 +990,7 @@ const DisplayView = () => {
             {/* Row 2 */}
             {isSmall ? (
               // On mobile/tablet: show News only with full-width modern card
-              <Grid item sx={{ scrollSnapAlign: 'start' }} id="news">
+              <Grid item sx={{ scrollSnapAlign: "start" }} id="news">
                 <Box sx={{ px: 2, width: "100%" }}>
                   <Suspense fallback={null}>
                     <NewsFeedLazy />
@@ -1008,20 +1018,22 @@ const DisplayView = () => {
                   <Suspense fallback={null}>
                     <NewsFeedLazy />
                   </Suspense>
-                  <Paper
-                    elevation={3}
-                    sx={{ mr: 8, ml: 8, textAlign: "center", boxShadow: 0 }}
-                  >
-                    <Box sx={{ display: "flex", justifyContent: "center" }}>
-                      <QRCodeCanvas
-                        value={`https://${currentListing.ListingURL}`}
-                        size={120}
-                        style={{
-                          backgroundColor: theme.palette.background.primary,
-                        }}
-                      />
-                    </Box>
-                  </Paper>
+                  {listingUrl && (
+                    <Paper
+                      elevation={3}
+                      sx={{ mr: 8, ml: 8, textAlign: "center", boxShadow: 0 }}
+                    >
+                      <Box sx={{ display: "flex", justifyContent: "center" }}>
+                        <QRCodeCanvas
+                          value={listingUrl}
+                          size={120}
+                          style={{
+                            backgroundColor: theme.palette.background.primary,
+                          }}
+                        />
+                      </Box>
+                    </Paper>
+                  )}
                 </Box>
               </Grid>
             )}
