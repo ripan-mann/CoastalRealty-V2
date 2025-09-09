@@ -153,4 +153,39 @@ router.get("/stats", async (_req, res) => {
   }
 });
 
+// Unique list of available cities (for settings UI)
+router.get("/cities", async (_req, res) => {
+  try {
+    const token = await getAccessToken();
+    const top = 100;
+    let skip = 0;
+    let all = [];
+    let total = 0;
+    do {
+      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$skip=${skip}&$top=${top}`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 15000,
+      });
+      const batch = Array.isArray(response.data.value) ? response.data.value : [];
+      total = response.data["@odata.count"] || total;
+      all = all.concat(batch);
+      skip += top;
+    } while (all.length < total);
+
+    const set = new Set();
+    for (const it of all) {
+      const city = String(it.City || "").trim();
+      if (city) set.add(city);
+    }
+    const list = Array.from(set).sort((a, b) => a.localeCompare(b));
+    res.json(list);
+  } catch (error) {
+    console.error("DDF Cities Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch cities" });
+  }
+});
+
+// Offices endpoint removed
+
 export default router;

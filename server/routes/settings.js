@@ -19,6 +19,8 @@ router.get("/display", async (_req, res) => {
       listingSwitchMs: doc.listingSwitchMs,
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
+      uploadedDisplayMs: doc.uploadedDisplayMs,
+      selectedCities: Array.isArray(doc.selectedCities) ? doc.selectedCities : [],
       newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,
     });
@@ -30,7 +32,7 @@ router.get("/display", async (_req, res) => {
 
 router.put("/display", requireAdmin, async (req, res) => {
   try {
-    let { listingSwitchMs, photoRotateMs, uploadedRotateMs, newsRotateMs } = req.body || {};
+    let { listingSwitchMs, photoRotateMs, uploadedRotateMs, uploadedDisplayMs, newsRotateMs, selectedCities } = req.body || {};
 
     const sanitize = (v, min) => {
       const n = Number(v);
@@ -40,11 +42,24 @@ router.put("/display", requireAdmin, async (req, res) => {
     const ls = sanitize(listingSwitchMs, 1000);
     const pr = sanitize(photoRotateMs, 500);
     const ur = sanitize(uploadedRotateMs, 500);
+    const ud = sanitize(uploadedDisplayMs, 500);
     const nr = sanitize(newsRotateMs, 1000);
+    // Sanitize city list
+    const cityList = Array.isArray(selectedCities)
+      ? Array.from(
+          new Set(
+            selectedCities
+              .map((s) => (typeof s === "string" ? s.trim() : ""))
+              .filter(Boolean)
+          )
+        ).slice(0, 100)
+      : undefined;
     if (ls !== undefined) update.listingSwitchMs = ls;
     if (pr !== undefined) update.photoRotateMs = pr;
     if (ur !== undefined) update.uploadedRotateMs = ur;
+    if (ud !== undefined) update.uploadedDisplayMs = ud;
     if (nr !== undefined) update.newsRotateMs = nr;
+    if (cityList !== undefined) update.selectedCities = cityList;
 
     const doc = await DisplaySettings.findOneAndUpdate({}, update, {
       new: true,
@@ -55,6 +70,8 @@ router.put("/display", requireAdmin, async (req, res) => {
       listingSwitchMs: doc.listingSwitchMs,
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
+      uploadedDisplayMs: doc.uploadedDisplayMs,
+      selectedCities: Array.isArray(doc.selectedCities) ? doc.selectedCities : [],
       newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,
     });

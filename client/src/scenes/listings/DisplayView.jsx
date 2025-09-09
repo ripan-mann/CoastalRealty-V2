@@ -45,7 +45,7 @@ import LoadingScreen from "../../components/LoadingScreen";
 import realtyImage from "assets/c21-logo.png";
 import defaultProfile from "assets/profile.png";
 import { QRCodeCanvas } from "qrcode.react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useLocation } from "react-router-dom";
 import { normalizeUrl, isResolvableUrl } from "../../utils/url";
 const NewsFeedLazy = lazy(() => import("../../components/NewsFeed"));
 
@@ -56,7 +56,7 @@ const calculateMortgage = (listPrice) => {
   const downPayment = listPrice * 0.2;
   const loanAmount = listPrice - downPayment;
   const interestRate = 0.045 / 12;
-  const numberOfPayments = 25 * 12;
+  const numberOfPayments = 30 * 12; // 30-year amortization
   const monthlyPayment =
     (loanAmount * interestRate) /
     (1 - Math.pow(1 + interestRate, -numberOfPayments));
@@ -65,7 +65,43 @@ const calculateMortgage = (listPrice) => {
 
 const placeholderImage = "/client/src/assets/c21-logo.png";
 
+// Shuffle listings by year: newest year first, each year's items randomized
+function shuffleByYear(listings) {
+  if (!Array.isArray(listings) || listings.length === 0) return listings || [];
+  const byYear = new Map();
+  for (const it of listings) {
+    const ts = it?.OriginalEntryTimestamp || it?.ModificationTimestamp || it?.ListingContractDate || it?.CloseDate;
+    let y = 0;
+    if (ts) {
+      const d = new Date(ts);
+      const yy = d && typeof d.getFullYear === 'function' ? d.getFullYear() : NaN;
+      y = Number.isFinite(yy) ? yy : 0;
+    }
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(it);
+  }
+  const yearsDesc = Array.from(byYear.keys()).sort((a, b) => b - a);
+  const out = [];
+  for (const y of yearsDesc) {
+    const arr = byYear.get(y) || [];
+    // Fisher-Yates
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    out.push(...arr);
+  }
+  return out;
+}
+
 const DisplayView = () => {
+  const { search } = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(search), [search]);
+  const selectedCity = useMemo(() => {
+    const c = (searchParams.get("city") || "").trim();
+    return c;
+  }, [searchParams]);
+  const selectedCitiesFromSettings = useSelector((s) => s.global.displaySettings?.selectedCities || []);
   const [properties, setProperties] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [agentInfo, setAgentInfo] = useState(null);
@@ -99,6 +135,12 @@ const DisplayView = () => {
   const dispatch = useDispatch();
   const displaySettings = useSelector((s) => s.global.displaySettings);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const EXCLUDE_LIMIT = 200;
+
+  const getExcludeKeys = React.useCallback(() => {
+    const arr = displayedListingKeysRef.current || [];
+    return arr.length > EXCLUDE_LIMIT ? arr.slice(arr.length - EXCLUDE_LIMIT) : arr;
+  }, []);
 
   const photoRotateMs = useMemo(() => {
     const v = Number(displaySettings?.photoRotateMs);
@@ -114,6 +156,11 @@ const DisplayView = () => {
     const v = Number(displaySettings?.uploadedRotateMs);
     return Number.isFinite(v) && v > 0 ? v : 15000;
   }, [displaySettings?.uploadedRotateMs]);
+
+  const overlayDisplayMs = useMemo(() => {
+    const v = Number(displaySettings?.uploadedDisplayMs);
+    return Number.isFinite(v) && v > 0 ? v : 8000;
+  }, [displaySettings?.uploadedDisplayMs]);
 
   // Fetch seasonal images once (selected only)
   useEffect(() => {
@@ -151,6 +198,7 @@ const DisplayView = () => {
   }, [overlayOpen]);
 
   // Schedule popup overlay of selected seasonal images on a global repeating interval
+  // Only when in fullscreen mode
   useEffect(() => {
     // Clear any previous trigger interval
     if (overlayTriggerIntervalRef.current) {
@@ -161,6 +209,7 @@ const DisplayView = () => {
     if (!settingsLoaded) return;
     if (!seasonalImages || seasonalImages.length === 0) return;
     if (!(uploadedRotateMs > 0)) return;
+    if (!isFullscreen) return;
 
     // First trigger after the interval, then every interval thereafter
     overlayTriggerIntervalRef.current = setInterval(() => {
@@ -176,7 +225,7 @@ const DisplayView = () => {
         overlayTriggerIntervalRef.current = null;
       }
     };
-  }, [settingsLoaded, seasonalImages, uploadedRotateMs]);
+  }, [settingsLoaded, seasonalImages, uploadedRotateMs, isFullscreen]);
 
   // When overlay opens, cycle through images one by one, then close
   useEffect(() => {
@@ -191,47 +240,72 @@ const DisplayView = () => {
       setOverlayOpen(false);
       return;
     }
-    // Show each image for the same duration as photoRotateMs with subtle fade
+    // Show each image for the configured overlay display duration with subtle fade
     overlayIntervalRef.current = setInterval(() => {
       setOverlayImageVisible(false);
       setTimeout(() => {
         setOverlayIndex((prev) => (prev + 1) % count);
         setOverlayImageVisible(true);
       }, 150);
-    }, photoRotateMs);
+    }, overlayDisplayMs);
 
     // Close after one full pass
     overlayCloseTimeoutRef.current = setTimeout(() => {
       setOverlayOpen(false);
-    }, photoRotateMs * count);
+    }, overlayDisplayMs * count);
 
     return () => {
       if (overlayIntervalRef.current) clearInterval(overlayIntervalRef.current);
       if (overlayCloseTimeoutRef.current)
         clearTimeout(overlayCloseTimeoutRef.current);
     };
-  }, [overlayOpen, seasonalImages, photoRotateMs]);
+  }, [overlayOpen, seasonalImages, overlayDisplayMs]);
 
-  const fetchProperties = async () => {
+  const fetchProperties = async (forceInitial = false) => {
     // Show loading only for the very first load
-    const isInitial = properties.length === 0;
+    const isInitial = forceInitial || properties.length === 0;
     if (isInitial) setIsLoading(true);
     try {
       if (isInitial) {
         // Fast path: fetch a quick first page so UI can render immediately
-        const quick = await getPropertiesQuick(displayedListingKeysRef.current);
+        const quick = await getPropertiesQuick(getExcludeKeys());
         if (Array.isArray(quick) && quick.length > 0) {
-          setProperties(quick);
+          const shuffled = shuffleByYear(quick);
+          const effectiveCities = selectedCity
+            ? [selectedCity]
+            : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
+            ? selectedCitiesFromSettings
+            : null;
+          const filtered = effectiveCities
+            ? shuffled.filter((l) =>
+                effectiveCities
+                  .map((x) => String(x).toLowerCase())
+                  .includes(String(l.City || "").trim().toLowerCase())
+              )
+            : shuffled;
+          setProperties(filtered);
           setCurrentListingIndex(0);
           setIsLoading(false);
           // Background: fetch full list and then replace while preserving current listing if possible
-          getProperties(displayedListingKeysRef.current)
+          getProperties(getExcludeKeys())
             .then((full) => {
               if (!Array.isArray(full) || full.length === 0) return;
               setProperties((prev) => {
                 const currentKey =
                   prev?.[currentListingIndex]?.ListingKey?.toString();
-                const next = full;
+                const nextAll = shuffleByYear(full);
+                const effectiveCities = selectedCity
+                  ? [selectedCity]
+                  : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
+                  ? selectedCitiesFromSettings
+                  : null;
+                const next = effectiveCities
+                  ? nextAll.filter((l) =>
+                      effectiveCities
+                        .map((x) => String(x).toLowerCase())
+                        .includes(String(l.City || "").trim().toLowerCase())
+                    )
+                  : nextAll;
                 if (currentKey) {
                   const idx = next.findIndex(
                     (l) => String(l.ListingKey) === currentKey
@@ -252,15 +326,41 @@ const DisplayView = () => {
         // Fallback: no quick results, do full fetch
       }
 
-      const data = await getProperties(displayedListingKeysRef.current);
+      const data = await getProperties(getExcludeKeys());
       if (Array.isArray(data) && data.length > 0) {
-        setProperties(data);
+        const nextAll = shuffleByYear(data);
+        const effectiveCities = selectedCity
+          ? [selectedCity]
+          : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
+          ? selectedCitiesFromSettings
+          : null;
+        const next = effectiveCities
+          ? nextAll.filter((l) =>
+              effectiveCities
+                .map((x) => String(x).toLowerCase())
+                .includes(String(l.City || "").trim().toLowerCase())
+            )
+          : nextAll;
+        setProperties(next);
         setCurrentListingIndex(0);
       } else if (isInitial) {
         // Last-resort fallback: clear excludes and try once
         displayedListingKeysRef.current = [];
         const fresh = await getProperties([]);
-        setProperties(fresh || []);
+        const all = shuffleByYear(fresh || []);
+        const effectiveCities = selectedCity
+          ? [selectedCity]
+          : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
+          ? selectedCitiesFromSettings
+          : null;
+        const next = effectiveCities
+          ? all.filter((l) =>
+              effectiveCities
+                .map((x) => String(x).toLowerCase())
+                .includes(String(l.City || "").trim().toLowerCase())
+            )
+          : all;
+        setProperties(next);
         setCurrentListingIndex(0);
       }
     } catch (err) {
@@ -273,6 +373,17 @@ const DisplayView = () => {
   useEffect(() => {
     fetchProperties();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the city filter in the URL changes, reset and refetch
+  useEffect(() => {
+    // Force an initial-style fetch so loading overlay is properly cleared afterwards
+    setIsLoading(true);
+    setProperties([]);
+    setCurrentListingIndex(0);
+    displayedListingKeysRef.current = [];
+    fetchProperties(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCity, selectedCitiesFromSettings]);
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -361,6 +472,14 @@ const DisplayView = () => {
   // Just-in-time prefetch for next listing's agent and weather
   useEffect(() => {
     if (!properties.length) return;
+    // Pause prefetching while seasonal overlay is visible
+    if (overlayOpen) {
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+        prefetchTimeoutRef.current = null;
+      }
+      return;
+    }
     const lead = Math.min(
       10000,
       Math.max(1000, Math.floor(listingSwitchMs * 0.2))
@@ -425,7 +544,7 @@ const DisplayView = () => {
         prefetchTimeoutRef.current = null;
       }
     };
-  }, [properties, currentListingIndex, listingSwitchMs]);
+  }, [properties, currentListingIndex, listingSwitchMs, overlayOpen]);
 
   const isFullscreenActive = () =>
     !!(
@@ -476,6 +595,12 @@ const DisplayView = () => {
       setIsSidebarOpen(true);
       setIsNavbarVisible(true);
       releaseWakeLock();
+      // Ensure any overlay is closed when exiting fullscreen
+      setOverlayOpen(false);
+      if (overlayTriggerIntervalRef.current) {
+        clearInterval(overlayTriggerIntervalRef.current);
+        overlayTriggerIntervalRef.current = null;
+      }
     }
   }, [setIsSidebarOpen, setIsNavbarVisible, requestWakeLock, releaseWakeLock]);
 
@@ -553,6 +678,9 @@ const DisplayView = () => {
         properties[currentListingIndex]?.ListingKey?.toString();
       if (currentKey && !displayedListingKeysRef.current.includes(currentKey)) {
         displayedListingKeysRef.current.push(currentKey);
+        if (displayedListingKeysRef.current.length > EXCLUDE_LIMIT * 2) {
+          displayedListingKeysRef.current = displayedListingKeysRef.current.slice(-EXCLUDE_LIMIT);
+        }
       }
 
       if (currentListingIndex + 1 >= properties.length) {
@@ -584,14 +712,16 @@ const DisplayView = () => {
   ]);
 
   // Listing-level timeout to force switch even if photos continue
+  // Paused while a seasonal overlay image is displayed
   useEffect(() => {
     if (!currentListing) return;
+    if (overlayOpen) return; // pause switching during overlay
     const t = setTimeout(() => {
       advanceToNextListing();
     }, listingSwitchMs);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentListingIndex, currentListing, listingSwitchMs]);
+  }, [currentListingIndex, currentListing, listingSwitchMs, overlayOpen]);
 
   useEffect(() => {
     if (currentListing) {
@@ -602,7 +732,12 @@ const DisplayView = () => {
   }, [currentPhotoSetIndex, currentListing]);
 
   if (!currentListing) {
-    return <LoadingScreen open={isLoading} message="Loading listings..." />;
+    if (isLoading) return <LoadingScreen open message="Loading listings..." />;
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography>No listings available.</Typography>
+      </Box>
+    );
   }
 
   const monthlyMortgage = calculateMortgage(currentListing.ListPrice);
@@ -622,30 +757,28 @@ const DisplayView = () => {
           scrollBehavior: "smooth",
         }}
       >
-        <Fade
-          in={overlayOpen && seasonalImages.length > 0}
-          timeout={300}
-          unmountOnExit
-        >
+        {/* Global loading overlay */}
+        <LoadingScreen open={isLoading} message="Loading listings..." />
+        <Fade in={overlayOpen && seasonalImages.length > 0} timeout={300} unmountOnExit>
           <Box
             sx={{
               position: "fixed",
               inset: 0,
               zIndex: 2000,
-              backgroundColor: "rgba(0,0,0,0.65)",
+              backgroundColor: "#000", // full screen takeover (no inlay look)
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              p: 2,
-              cursor: "pointer",
+              p: 0,
+              cursor: "default",
             }}
-            onClick={() => setOverlayOpen(false)}
+            // No click-to-close; auto closes based on timer
           >
             <Grow in={overlayOpen} timeout={300}>
               <Box
                 sx={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
+                  width: "100vw",
+                  height: "100svh",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -661,11 +794,12 @@ const DisplayView = () => {
                       src={src}
                       alt={item?.originalName || "Uploaded"}
                       style={{
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        objectFit: "contain",
+                        width: "100vw",
+                        height: "100svh",
+                        objectFit: "cover",
                         transition: "opacity 200ms ease-in-out",
                         opacity: overlayImageVisible ? 1 : 0,
+                        display: "block",
                       }}
                     />
                   );
@@ -764,17 +898,26 @@ const DisplayView = () => {
                             "Phone not available"}
                         </Typography>
                       </Box>
-                      {agentInfo?.MemberSocialMedia?.[0]
-                        ?.SocialMediaUrlOrId && (
-                        <Box ml={2}>
-                          <QRCodeCanvas
-                            value={
-                              agentInfo.MemberSocialMedia[0].SocialMediaUrlOrId
-                            }
-                            size={80}
-                          />
-                        </Box>
-                      )}
+                      {(() => {
+                        const raw = (
+                          agentInfo?.MemberOfficePhone || ""
+                        ).toString();
+                        const digits = raw.replace(/\D+/g, "");
+                        if (!digits) return null;
+                        // Build a tel: URI. If North American 10 digits, prefix +1
+                        const telNumber =
+                          digits.length === 10
+                            ? `+1${digits}`
+                            : digits.startsWith("+")
+                            ? digits
+                            : `+${digits}`;
+                        const telUri = `tel:${telNumber}`;
+                        return (
+                          <Box ml={2}>
+                            <QRCodeCanvas value={telUri} size={80} />
+                          </Box>
+                        );
+                      })()}
                     </Paper>
                     <Divider
                       sx={{ bgcolor: theme.palette.grey[200], height: 2 }}
@@ -949,7 +1092,7 @@ const DisplayView = () => {
                         >
                           Based on 20% down, 4.50% interest,
                           <br />
-                          25-year amortization
+                          30-year amortization
                         </Typography>
                       </Paper>
                     )}
@@ -1106,37 +1249,39 @@ const DisplayView = () => {
             </Typography>
           </Box>
         )}
-        <IconButton
-          onClick={toggleFullscreen}
-          sx={{
-            position: "fixed",
-            bottom: 24,
-            right: 24,
-            width: isFullscreen ? 35 : 56,
-            height: isFullscreen ? 35 : 56,
-            borderRadius: "50%",
-            backgroundColor: isFullscreen ? "#fff" : theme.palette.primary[300],
-            color: isFullscreen ? "#fff" : theme.palette.secondary[200],
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            boxShadow: isFullscreen ? 0 : 3,
-            cursor: "pointer",
-            zIndex: 9999,
-            fontSize: 24,
-            "&:hover": {
-              backgroundColor: isFullscreen
-                ? theme.palette.grey[400]
-                : undefined,
-            },
-          }}
-        >
-          {isFullscreen ? (
-            <CloseIcon sx={{ color: "#fff" }} />
-          ) : (
-            <FullscreenIcon />
-          )}
-        </IconButton>
+        {!overlayOpen && (
+          <IconButton
+            onClick={toggleFullscreen}
+            sx={{
+              position: "fixed",
+              bottom: 24,
+              right: 24,
+              width: isFullscreen ? 35 : 56,
+              height: isFullscreen ? 35 : 56,
+              borderRadius: "50%",
+              backgroundColor: isFullscreen ? "#fff" : theme.palette.primary[300],
+              color: isFullscreen ? "#fff" : theme.palette.secondary[200],
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              boxShadow: isFullscreen ? 0 : 3,
+              cursor: "pointer",
+              zIndex: 9999,
+              fontSize: 24,
+              "&:hover": {
+                backgroundColor: isFullscreen
+                  ? theme.palette.grey[400]
+                  : undefined,
+              },
+            }}
+          >
+            {isFullscreen ? (
+              <CloseIcon sx={{ color: "#fff" }} />
+            ) : (
+              <FullscreenIcon />
+            )}
+          </IconButton>
+        )}
       </Box>
     </Fade>
   );

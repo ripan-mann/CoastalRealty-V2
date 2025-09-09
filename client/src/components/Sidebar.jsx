@@ -30,9 +30,27 @@ const navItems = [
     hasSubItems: true,
   },
   {
-    text: "Display View",
+    text: "All",
     icon: <VisibilityOutlined />,
     path: "/listings/display-view",
+    parent: "Listings",
+  },
+  {
+    text: "Surrey",
+    icon: <VisibilityOutlined />,
+    path: "/listings/display-view?city=Surrey",
+    parent: "Listings",
+  },
+  {
+    text: "Langley",
+    icon: <VisibilityOutlined />,
+    path: "/listings/display-view?city=Langley",
+    parent: "Listings",
+  },
+  {
+    text: "Abbotsford",
+    icon: <VisibilityOutlined />,
+    path: "/listings/display-view?city=Abbotsford",
     parent: "Listings",
   },
   { text: "Management", icon: null },
@@ -46,15 +64,15 @@ const navItems = [
 ];
 
 const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [active, setActive] = useState("");
   const navigate = useNavigate();
   const theme = useTheme();
   const [counts, setCounts] = useState({ listings: null, news: null });
 
   useEffect(() => {
-    setActive(pathname);
-  }, [pathname]);
+    setActive(pathname + (search || ""));
+  }, [pathname, search]);
 
   // Load lightweight counts later to avoid burst at startup
   useEffect(() => {
@@ -144,9 +162,6 @@ const Sidebar = ({ user, drawerWidth, isSidebarOpen, setIsSidebarOpen }) => {
               // Preload admin sections
               import(
                 /* webpackPrefetch: true */ "../components/admin/SeasonalImagesSection"
-              );
-              import(
-                /* webpackPrefetch: true */ "../components/admin/AISuggestionsSection"
               );
               // Prefetch images and stash into sessionStorage for quick first paint
               const base = API_BASE || "";

@@ -7,6 +7,8 @@ const initialState = {
     listingSwitchMs: 60000,
     photoRotateMs: 10000,
     uploadedRotateMs: 15000,
+    uploadedDisplayMs: 8000,
+    selectedCities: [],
     newsRotateMs: 50000,
     updatedAt: null,
   },

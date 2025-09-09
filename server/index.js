@@ -1,7 +1,8 @@
+import "dotenv/config"; // Load .env from process.cwd() as a baseline
+import dotenv from "dotenv";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
@@ -18,7 +19,13 @@ import rateLimit from "express-rate-limit";
 import requireAdmin from "./middleware/requireAdmin.js";
 
 // CONFIGURATION
-dotenv.config();
+// Also explicitly load server/.env regardless of where the process starts
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+try {
+  dotenv.config({ path: path.join(__dirname, ".env") });
+} catch (_) {}
+
 const app = express();
 // Trust proxy if deployed behind one (configurable)
 if (String(process.env.TRUST_PROXY || "").toLowerCase() === "true") {

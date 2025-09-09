@@ -112,6 +112,11 @@ export const updateDisplaySettings = async (payload) => {
   return res.data;
 };
 
+// Cities for settings UI
+export const listCities = async () => {
+  const res = await axios.get(`${BASE}/api/ddf/cities`);
+  return res.data;
+};
 // Seasonal images + suggestions
 export const listSeasonalImages = async (selectedOnly = false) => {
   // Add a timestamp to avoid any intermediary caching when navigating between routes
@@ -119,10 +124,6 @@ export const listSeasonalImages = async (selectedOnly = false) => {
   return res.data;
 };
 
-export const getAiGenRate = async (eventTitle) => {
-  const res = await axios.get(`${BASE}/api/seasonal/rate`, { params: { t: Date.now(), eventTitle } });
-  return res.data; // { remaining, resetInSec }
-};
 
 export const uploadSeasonalImages = async (files) => {
   const form = new FormData();
@@ -143,20 +144,7 @@ export const updateSeasonalSelection = async (selectedIds) => {
   return res.data;
 };
 
-export const previewGenerateSeasonalImage = async (eventTitle) => {
-  const res = await axios.post(`${BASE}/api/seasonal/generate?preview=1`, { eventTitle });
-  return res.data; // { b64, mimetype, title }
-};
-
-export const createCheckoutForGeneratedImage = async (eventTitle, b64) => {
-  const res = await axios.post(`${BASE}/api/seasonal/payments/checkout`, { eventTitle, b64 });
-  return res.data; // { url, tmpId }
-};
-
-export const confirmGeneratedImage = async (tmpId, sessionId) => {
-  const res = await axios.post(`${BASE}/api/seasonal/generate/confirm`, { tmpId, sessionId });
-  return res.data; // saved doc
-};
+// AI image generation endpoints removed
 
 
 export const getHolidays = async (year, regions = ["CA", "CA-BC"]) => {
@@ -165,3 +153,5 @@ export const getHolidays = async (year, regions = ["CA", "CA-BC"]) => {
   });
   return res.data;
 };
+// Cities for settings UI
+// city/office filter endpoints removed
