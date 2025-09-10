@@ -5,6 +5,19 @@ import getAccessToken from "../utils/getAccessToken.js";
 
 const router = express.Router();
 
+// Coastal Realty office keys (exclude St. Stephen NB: 283215)
+const COASTAL_OFFICE_KEYS = {
+  ALL: ["61022", "278419", "290689", "299834"],
+  BY_CITY: {
+    Surrey: ["61022", "290689"],
+    Abbotsford: ["278419"],
+    Langley: ["299834"],
+  },
+};
+
+const buildOfficeFilter = (keys) =>
+  `(${keys.map((k) => `ListOfficeKey eq '${k}'`).join(" or ")})`;
+
 router.get("/member/:agentKey", async (req, res) => {
   const agentKey = String(req.params.agentKey);
 
@@ -95,7 +108,9 @@ router.get("/properties", async (req, res) => {
     let totalCount = 0;
     if (isQuick) {
       // Fast path: only fetch first page so UI can render immediately
-      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$skip=${skip}&$top=${top}`;
+      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=${buildOfficeFilter(
+        COASTAL_OFFICE_KEYS.ALL
+      )}&$count=true&$skip=${skip}&$top=${top}`;
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 15000,
@@ -105,7 +120,9 @@ router.get("/properties", async (req, res) => {
     } else {
       // Full fetch: page through all results
       do {
-        const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$skip=${skip}&$top=${top}`;
+        const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=${buildOfficeFilter(
+          COASTAL_OFFICE_KEYS.ALL
+        )}&$count=true&$skip=${skip}&$top=${top}`;
         const response = await axios.get(url, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -140,7 +157,9 @@ router.get("/properties", async (req, res) => {
 router.get("/stats", async (_req, res) => {
   try {
     const token = await getAccessToken();
-    const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$top=0`;
+    const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=${buildOfficeFilter(
+      COASTAL_OFFICE_KEYS.ALL
+    )}&$count=true&$top=0`;
     const response = await axios.get(url, {
       headers: { Authorization: `Bearer ${token}` },
       timeout: 10000,
@@ -161,8 +180,10 @@ router.get("/cities", async (_req, res) => {
     let skip = 0;
     let all = [];
     let total = 0;
-    do {
-      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=ListOfficeKey eq '61022'&$count=true&$skip=${skip}&$top=${top}`;
+  do {
+      const url = `https://ddfapi.realtor.ca/odata/v1/Property?$filter=${buildOfficeFilter(
+        COASTAL_OFFICE_KEYS.ALL
+      )}&$count=true&$skip=${skip}&$top=${top}`;
       const response = await axios.get(url, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 15000,
@@ -186,6 +207,135 @@ router.get("/cities", async (_req, res) => {
   }
 });
 
-// Offices endpoint removed
+// Get a single office by OfficeKey
+router.get("/office/:officeKey", async (req, res) => {
+  const officeKey = String(req.params.officeKey);
+  if (!/^\d+$/.test(officeKey)) {
+    return res.status(400).json({ error: "Invalid officeKey" });
+  }
+  try {
+    const token = await getAccessToken();
+    const url = `https://ddfapi.realtor.ca/odata/v1/Office('${officeKey}')`;
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 15000,
+    });
+    res.json(response.data);
+  } catch (error) {
+    console.error("DDF Office Get Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch office from DDF®" });
+  }
+});
+// Offices search: find Coastal Realty office keys, optionally by city
+router.get("/offices/coastal", async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    const name = String(req.query.name || "Coastal Realty").trim();
+    const city = String(req.query.city || "").trim();
+
+    // OData filter; escape single quotes per OData rules
+    const esc = (s) => s.replace(/'/g, "''");
+    const select = [
+      "OfficeKey",
+      "OfficeName",
+      "OfficeCity",
+      "OfficeStateOrProvince",
+      "OfficePhone",
+      "OfficePostalCode",
+      "ModificationTimestamp",
+      "OriginalEntryTimestamp",
+    ].join(",");
+
+    async function query(filter) {
+      const top = 100;
+      let skip = 0;
+      let total = 0;
+      let all = [];
+      do {
+        const url = `https://ddfapi.realtor.ca/odata/v1/Office?$select=${select}&$filter=${encodeURIComponent(
+          filter
+        )}&$count=true&$skip=${skip}&$top=${top}`;
+        const response = await axios.get(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000,
+        });
+        const batch = Array.isArray(response.data.value) ? response.data.value : [];
+        total = Number(response.data["@odata.count"] || 0) || total;
+        all = all.concat(batch);
+        skip += top;
+      } while (all.length < total && skip < 2000);
+      return all;
+    }
+
+    // Primary filter: straightforward contains on OfficeName (+ optional exact city)
+    const cond = [`contains(OfficeName,'${esc(name)}')`, `OfficeStatus eq 'Active'`];
+    if (city) cond.push(`OfficeCity eq '${esc(city)}'`);
+    let all = await query(cond.join(" and "));
+
+    // Fallback: AND each token (e.g., "Coastal" and "Realty") if no results
+    if (all.length === 0) {
+      const tokens = name.split(/\s+/).filter(Boolean);
+      if (tokens.length > 1) {
+        const andCond = tokens.map((t) => `contains(OfficeName,'${esc(t)}')`);
+        const f = [
+          ...andCond,
+          `OfficeStatus eq 'Active'`,
+          ...(city ? [`OfficeCity eq '${esc(city)}'`] : []),
+        ].join(" and ");
+        all = await query(f);
+      }
+    }
+
+    // Provide a concise shape back to the client
+    const mapped = all.map((o) => ({
+      OfficeKey: String(o.OfficeKey || ""),
+      OfficeName: o.OfficeName,
+      OfficeCity: o.OfficeCity,
+      OfficeStateOrProvince: o.OfficeStateOrProvince,
+      OfficePhone: o.OfficePhone,
+      OfficePostalCode: o.OfficePostalCode,
+    }));
+    res.json(mapped);
+  } catch (error) {
+    console.error("DDF Offices Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch offices from DDF®" });
+  }
+});
+
+// Generic offices search by name/city
+router.get("/offices/search", async (req, res) => {
+  try {
+    const token = await getAccessToken();
+    const name = String(req.query.name || "").trim();
+    const city = String(req.query.city || "").trim();
+    const esc = (s) => s.replace(/'/g, "''");
+
+    const select = [
+      "OfficeKey",
+      "OfficeName",
+      "OfficeCity",
+      "OfficeStateOrProvince",
+      "OfficePhone",
+      "OfficePostalCode",
+    ].join(",");
+
+    const base = ["OfficeStatus eq 'Active'"];
+    if (name) base.push(`contains(OfficeName,'${esc(name)}')`);
+    if (city) base.push(`OfficeCity eq '${esc(city)}'`);
+
+    const url = `https://ddfapi.realtor.ca/odata/v1/Office?$select=${select}&$filter=${encodeURIComponent(
+      base.join(" and ")
+    )}&$count=true&$top=100`;
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 15000,
+    });
+    const items = Array.isArray(response.data.value) ? response.data.value : [];
+    res.json(items);
+  } catch (error) {
+    console.error("DDF Offices Search Error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to search offices from DDF®" });
+  }
+});
 
 export default router;

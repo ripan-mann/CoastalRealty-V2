@@ -33,7 +33,7 @@ router.post("/", async (req, res) => {
     .slice(0, 200);
   let count = Number(sentences);
   if (!Number.isFinite(count)) count = 2;
-  count = Math.max(1, Math.min(6, Math.floor(count)));
+  count = Math.max(1, Math.min(2, Math.floor(count)));
 
   try {
     // Short-circuit if we have it cached

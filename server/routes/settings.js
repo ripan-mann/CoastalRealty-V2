@@ -20,6 +20,7 @@ router.get("/display", async (_req, res) => {
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
       uploadedDisplayMs: doc.uploadedDisplayMs,
+      openHouseDisplayMs: doc.openHouseDisplayMs,
       selectedCities: Array.isArray(doc.selectedCities) ? doc.selectedCities : [],
       newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,
@@ -32,7 +33,7 @@ router.get("/display", async (_req, res) => {
 
 router.put("/display", requireAdmin, async (req, res) => {
   try {
-    let { listingSwitchMs, photoRotateMs, uploadedRotateMs, uploadedDisplayMs, newsRotateMs, selectedCities } = req.body || {};
+    let { listingSwitchMs, photoRotateMs, uploadedRotateMs, uploadedDisplayMs, openHouseDisplayMs, newsRotateMs, selectedCities } = req.body || {};
 
     const sanitize = (v, min) => {
       const n = Number(v);
@@ -43,6 +44,7 @@ router.put("/display", requireAdmin, async (req, res) => {
     const pr = sanitize(photoRotateMs, 500);
     const ur = sanitize(uploadedRotateMs, 500);
     const ud = sanitize(uploadedDisplayMs, 500);
+    const oh = sanitize(openHouseDisplayMs, 500);
     const nr = sanitize(newsRotateMs, 1000);
     // Sanitize city list
     const cityList = Array.isArray(selectedCities)
@@ -58,6 +60,7 @@ router.put("/display", requireAdmin, async (req, res) => {
     if (pr !== undefined) update.photoRotateMs = pr;
     if (ur !== undefined) update.uploadedRotateMs = ur;
     if (ud !== undefined) update.uploadedDisplayMs = ud;
+    if (oh !== undefined) update.openHouseDisplayMs = oh;
     if (nr !== undefined) update.newsRotateMs = nr;
     if (cityList !== undefined) update.selectedCities = cityList;
 
@@ -71,6 +74,7 @@ router.put("/display", requireAdmin, async (req, res) => {
       photoRotateMs: doc.photoRotateMs,
       uploadedRotateMs: doc.uploadedRotateMs,
       uploadedDisplayMs: doc.uploadedDisplayMs,
+      openHouseDisplayMs: doc.openHouseDisplayMs,
       selectedCities: Array.isArray(doc.selectedCities) ? doc.selectedCities : [],
       newsRotateMs: doc.newsRotateMs,
       updatedAt: doc.updatedAt,

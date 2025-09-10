@@ -49,6 +49,7 @@ const DisplaySettings = () => {
     photoRotateMs: 10,
     uploadedRotateMs: 15,
     uploadedDisplayMs: 8,
+    openHouseDisplayMs: 10,
     selectedCities: [],
     newsRotateMs: 50,
   });
@@ -90,6 +91,7 @@ const DisplaySettings = () => {
         photoRotateMs: (data.photoRotateMs ?? 10000) / 1000,
         uploadedRotateMs: (data.uploadedRotateMs ?? 15000) / 1000,
         uploadedDisplayMs: (data.uploadedDisplayMs ?? 8000) / 1000,
+        openHouseDisplayMs: (data.openHouseDisplayMs ?? 10000) / 1000,
         selectedCities: Array.isArray(data.selectedCities)
           ? data.selectedCities
           : [],
@@ -183,6 +185,7 @@ const DisplaySettings = () => {
         photoRotateMs: Math.round((form.photoRotateMs ?? 0) * 1000),
         uploadedRotateMs: Math.round((form.uploadedRotateMs ?? 0) * 1000),
         uploadedDisplayMs: Math.round((form.uploadedDisplayMs ?? 0) * 1000),
+        openHouseDisplayMs: Math.round((form.openHouseDisplayMs ?? 0) * 1000),
         selectedCities: Array.isArray(form.selectedCities) ? form.selectedCities : [],
         newsRotateMs: Math.round((form.newsRotateMs ?? 0) * 1000),
       };
@@ -195,6 +198,7 @@ const DisplaySettings = () => {
         photoRotateMs: (updated.photoRotateMs ?? 10000) / 1000,
         uploadedRotateMs: (updated.uploadedRotateMs ?? 15000) / 1000,
         uploadedDisplayMs: (updated.uploadedDisplayMs ?? 8000) / 1000,
+        openHouseDisplayMs: (updated.openHouseDisplayMs ?? 10000) / 1000,
         selectedCities: Array.isArray(updated.selectedCities) ? updated.selectedCities : [],
         newsRotateMs: (updated.newsRotateMs ?? 50000) / 1000,
       });
@@ -523,6 +527,44 @@ const DisplaySettings = () => {
                 "& .MuiFormHelperText-root": { fontSize: '0.95rem' },
               }}
               helperText="Duration each uploaded seasonal image is shown (seconds)"
+              fullWidth
+            />
+
+            <TextField
+              label={
+                <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                  Open house popup duration
+                  <Tooltip title="How long the Open House popup appears over the photos when a listing has open house info." componentsProps={{ tooltip: { sx: { fontSize: '0.95rem' } } }}>
+                    <InfoOutlinedIcon sx={{ fontSize: 18, opacity: 0.7 }} />
+                  </Tooltip>
+                </Box>
+              }
+              type="number"
+              size="small"
+              value={form.openHouseDisplayMs}
+              onChange={handleChange("openHouseDisplayMs")}
+              inputProps={{ min: 0.5, step: 0.5 }}
+              InputLabelProps={{ sx: { fontSize: '1rem' } }}
+              InputProps={{
+                endAdornment: <InputAdornment position="end" sx={{ '& p, & span': { fontSize: '1rem' } }}>s</InputAdornment>,
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: alpha(theme.palette.warning.main, 0.6),
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: theme.palette.warning.main,
+                  },
+                },
+                "& .MuiInputBase-input": { fontSize: '1.1rem' },
+                "& .MuiInputLabel-root.Mui-focused": {
+                  color: theme.palette.warning.main,
+                },
+                "& .MuiFormHelperText-root": { fontSize: '0.95rem' },
+              }}
+              helperText="Time the Open House popup remains visible (seconds)"
               fullWidth
             />
 

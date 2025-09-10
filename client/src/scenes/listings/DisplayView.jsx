@@ -18,6 +18,7 @@ import {
   useTheme,
   Stack,
   Divider,
+  Chip,
 } from "@mui/material";
 import { useMediaQuery } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -26,6 +27,7 @@ import BedIcon from "@mui/icons-material/Bed";
 import BathtubIcon from "@mui/icons-material/Bathtub";
 import SquareFootIcon from "@mui/icons-material/SquareFoot";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import StraightenIcon from "@mui/icons-material/Straighten";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import HomeIcon from "@mui/icons-material/Home";
@@ -35,6 +37,7 @@ import {
   getProperties,
   getPropertiesQuick,
   getMemberByAgentKey,
+  getOpenHouseByListingKey,
   listSeasonalImages,
   getDisplaySettings,
 } from "../../state/api";
@@ -47,6 +50,7 @@ import defaultProfile from "assets/profile.png";
 import { QRCodeCanvas } from "qrcode.react";
 import { useOutletContext, useLocation } from "react-router-dom";
 import { normalizeUrl, isResolvableUrl } from "../../utils/url";
+import { alpha } from "@mui/material/styles";
 const NewsFeedLazy = lazy(() => import("../../components/NewsFeed"));
 
 // Intervals are configured from backend settings; defaults apply if not loaded
@@ -70,11 +74,16 @@ function shuffleByYear(listings) {
   if (!Array.isArray(listings) || listings.length === 0) return listings || [];
   const byYear = new Map();
   for (const it of listings) {
-    const ts = it?.OriginalEntryTimestamp || it?.ModificationTimestamp || it?.ListingContractDate || it?.CloseDate;
+    const ts =
+      it?.OriginalEntryTimestamp ||
+      it?.ModificationTimestamp ||
+      it?.ListingContractDate ||
+      it?.CloseDate;
     let y = 0;
     if (ts) {
       const d = new Date(ts);
-      const yy = d && typeof d.getFullYear === 'function' ? d.getFullYear() : NaN;
+      const yy =
+        d && typeof d.getFullYear === "function" ? d.getFullYear() : NaN;
       y = Number.isFinite(yy) ? yy : 0;
     }
     if (!byYear.has(y)) byYear.set(y, []);
@@ -94,6 +103,49 @@ function shuffleByYear(listings) {
   return out;
 }
 
+// Map route city to ListOfficeKey groups
+const OFFICE_KEYS_BY_CITY = {
+  Surrey: ["61022", "290689"],
+  Langley: ["299834"],
+  Abbotsford: ["278419"],
+};
+
+// Apply filtering based on the route city (office-based) or
+// fall back to settings-selected property cities. Always ensure we
+// return at least one listing (fallback to unfiltered if empty).
+function filterByRouteOrSettingsWithFallback(
+  allListings,
+  selectedCity,
+  selectedCitiesFromSettings
+) {
+  // Route city maps to office keys
+  const officeKeys = OFFICE_KEYS_BY_CITY[selectedCity];
+  if (officeKeys) {
+    const filtered = (allListings || []).filter((l) =>
+      officeKeys.includes(String(l.ListOfficeKey || ""))
+    );
+    if (filtered.length > 0) return filtered;
+    return allListings;
+  }
+
+  // Otherwise respect settings-selected property cities
+  const effectiveCities =
+    Array.isArray(selectedCitiesFromSettings) &&
+    selectedCitiesFromSettings.length
+      ? selectedCitiesFromSettings
+      : null;
+  if (!effectiveCities) return allListings;
+  const lowered = effectiveCities.map((x) => String(x).toLowerCase());
+  const filtered = (allListings || []).filter((l) =>
+    lowered.includes(
+      String(l.City || "")
+        .trim()
+        .toLowerCase()
+    )
+  );
+  return filtered.length > 0 ? filtered : allListings;
+}
+
 const DisplayView = () => {
   const { search } = useLocation();
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
@@ -101,7 +153,17 @@ const DisplayView = () => {
     const c = (searchParams.get("city") || "").trim();
     return c;
   }, [searchParams]);
-  const selectedCitiesFromSettings = useSelector((s) => s.global.displaySettings?.selectedCities || []);
+  // Debug toggle: show a mock Open House popup for testing
+  const debugOpenHouse = useMemo(() => {
+    try {
+      return searchParams.has("debugOH");
+    } catch (_) {
+      return false;
+    }
+  }, [searchParams]);
+  const selectedCitiesFromSettings = useSelector(
+    (s) => s.global.displaySettings?.selectedCities || []
+  );
   const [properties, setProperties] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [agentInfo, setAgentInfo] = useState(null);
@@ -128,6 +190,10 @@ const DisplayView = () => {
   const overlayTriggerIntervalRef = useRef(null);
   const overlayOpenRef = useRef(false);
   const displayedListingKeysRef = useRef([]);
+  // Open house state
+  const [openHouseInfo, setOpenHouseInfo] = useState(null);
+  const openHouseCacheRef = useRef(new Map()); // listingKey -> array | null
+  const [showMortgage, setShowMortgage] = useState(true);
   const theme = useTheme();
   const isSmall = useMediaQuery("(max-width:900px)");
   const topPad = isSmall ? 2 : isFullscreen ? 3 : 0;
@@ -139,7 +205,9 @@ const DisplayView = () => {
 
   const getExcludeKeys = React.useCallback(() => {
     const arr = displayedListingKeysRef.current || [];
-    return arr.length > EXCLUDE_LIMIT ? arr.slice(arr.length - EXCLUDE_LIMIT) : arr;
+    return arr.length > EXCLUDE_LIMIT
+      ? arr.slice(arr.length - EXCLUDE_LIMIT)
+      : arr;
   }, []);
 
   const photoRotateMs = useMemo(() => {
@@ -161,6 +229,11 @@ const DisplayView = () => {
     const v = Number(displaySettings?.uploadedDisplayMs);
     return Number.isFinite(v) && v > 0 ? v : 8000;
   }, [displaySettings?.uploadedDisplayMs]);
+
+  const openHouseDisplayMs = useMemo(() => {
+    const v = Number(displaySettings?.openHouseDisplayMs);
+    return Number.isFinite(v) && v > 0 ? v : 10000;
+  }, [displaySettings?.openHouseDisplayMs]);
 
   // Fetch seasonal images once (selected only)
   useEffect(() => {
@@ -271,19 +344,12 @@ const DisplayView = () => {
         const quick = await getPropertiesQuick(getExcludeKeys());
         if (Array.isArray(quick) && quick.length > 0) {
           const shuffled = shuffleByYear(quick);
-          const effectiveCities = selectedCity
-            ? [selectedCity]
-            : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
-            ? selectedCitiesFromSettings
-            : null;
-          const filtered = effectiveCities
-            ? shuffled.filter((l) =>
-                effectiveCities
-                  .map((x) => String(x).toLowerCase())
-                  .includes(String(l.City || "").trim().toLowerCase())
-              )
-            : shuffled;
-          setProperties(filtered);
+          const ensured = filterByRouteOrSettingsWithFallback(
+            shuffled,
+            selectedCity,
+            selectedCitiesFromSettings
+          );
+          setProperties(ensured);
           setCurrentListingIndex(0);
           setIsLoading(false);
           // Background: fetch full list and then replace while preserving current listing if possible
@@ -294,18 +360,11 @@ const DisplayView = () => {
                 const currentKey =
                   prev?.[currentListingIndex]?.ListingKey?.toString();
                 const nextAll = shuffleByYear(full);
-                const effectiveCities = selectedCity
-                  ? [selectedCity]
-                  : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
-                  ? selectedCitiesFromSettings
-                  : null;
-                const next = effectiveCities
-                  ? nextAll.filter((l) =>
-                      effectiveCities
-                        .map((x) => String(x).toLowerCase())
-                        .includes(String(l.City || "").trim().toLowerCase())
-                    )
-                  : nextAll;
+                const next = filterByRouteOrSettingsWithFallback(
+                  nextAll,
+                  selectedCity,
+                  selectedCitiesFromSettings
+                );
                 if (currentKey) {
                   const idx = next.findIndex(
                     (l) => String(l.ListingKey) === currentKey
@@ -329,18 +388,11 @@ const DisplayView = () => {
       const data = await getProperties(getExcludeKeys());
       if (Array.isArray(data) && data.length > 0) {
         const nextAll = shuffleByYear(data);
-        const effectiveCities = selectedCity
-          ? [selectedCity]
-          : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
-          ? selectedCitiesFromSettings
-          : null;
-        const next = effectiveCities
-          ? nextAll.filter((l) =>
-              effectiveCities
-                .map((x) => String(x).toLowerCase())
-                .includes(String(l.City || "").trim().toLowerCase())
-            )
-          : nextAll;
+        const next = filterByRouteOrSettingsWithFallback(
+          nextAll,
+          selectedCity,
+          selectedCitiesFromSettings
+        );
         setProperties(next);
         setCurrentListingIndex(0);
       } else if (isInitial) {
@@ -348,18 +400,11 @@ const DisplayView = () => {
         displayedListingKeysRef.current = [];
         const fresh = await getProperties([]);
         const all = shuffleByYear(fresh || []);
-        const effectiveCities = selectedCity
-          ? [selectedCity]
-          : Array.isArray(selectedCitiesFromSettings) && selectedCitiesFromSettings.length
-          ? selectedCitiesFromSettings
-          : null;
-        const next = effectiveCities
-          ? all.filter((l) =>
-              effectiveCities
-                .map((x) => String(x).toLowerCase())
-                .includes(String(l.City || "").trim().toLowerCase())
-            )
-          : all;
+        const next = filterByRouteOrSettingsWithFallback(
+          all,
+          selectedCity,
+          selectedCitiesFromSettings
+        );
         setProperties(next);
         setCurrentListingIndex(0);
       }
@@ -410,6 +455,48 @@ const DisplayView = () => {
     };
     fetchAgent();
   }, [currentListing]);
+
+  // Fetch Open House info for current listing (used in mortgage card)
+  useEffect(() => {
+    setOpenHouseInfo(null);
+    // Testing: force a mock popup when ?debugOH is in the URL
+    if (debugOpenHouse) {
+      const now = Date.now();
+      const start = new Date(now + 15 * 60 * 1000).toISOString();
+      const end = new Date(now + 75 * 60 * 1000).toISOString();
+      setOpenHouseInfo([{ StartDateTime: start, EndDateTime: end }]);
+      return;
+    }
+    const lk = String(currentListing?.ListingKey || "");
+    if (!lk) return;
+    const fromCache = openHouseCacheRef.current.get(lk);
+    if (fromCache !== undefined) {
+      if (Array.isArray(fromCache) && fromCache.length > 0) setOpenHouseInfo(fromCache);
+      return;
+    }
+    (async () => {
+      try {
+        const data = await getOpenHouseByListingKey(lk);
+        const arr = Array.isArray(data) ? data : [];
+        openHouseCacheRef.current.set(lk, arr);
+        if (arr.length > 0) setOpenHouseInfo(arr);
+      } catch (e) {
+        openHouseCacheRef.current.set(lk, null);
+      }
+    })();
+  }, [currentListing, openHouseDisplayMs, debugOpenHouse]);
+
+  // Toggle mortgage/open house panel based on settings timer
+  useEffect(() => {
+    if (Array.isArray(openHouseInfo) && openHouseInfo.length > 0) {
+      const id = setInterval(() => {
+        setShowMortgage((prev) => !prev);
+      }, Math.max(1500, openHouseDisplayMs));
+      return () => clearInterval(id);
+    } else {
+      setShowMortgage(true);
+    }
+  }, [openHouseInfo, openHouseDisplayMs]);
 
   useEffect(() => {
     // Only fetch weather after properties are loaded and we have a listing with a city
@@ -679,7 +766,8 @@ const DisplayView = () => {
       if (currentKey && !displayedListingKeysRef.current.includes(currentKey)) {
         displayedListingKeysRef.current.push(currentKey);
         if (displayedListingKeysRef.current.length > EXCLUDE_LIMIT * 2) {
-          displayedListingKeysRef.current = displayedListingKeysRef.current.slice(-EXCLUDE_LIMIT);
+          displayedListingKeysRef.current =
+            displayedListingKeysRef.current.slice(-EXCLUDE_LIMIT);
         }
       }
 
@@ -759,7 +847,11 @@ const DisplayView = () => {
       >
         {/* Global loading overlay */}
         <LoadingScreen open={isLoading} message="Loading listings..." />
-        <Fade in={overlayOpen && seasonalImages.length > 0} timeout={300} unmountOnExit>
+        <Fade
+          in={overlayOpen && seasonalImages.length > 0}
+          timeout={300}
+          unmountOnExit
+        >
           <Box
             sx={{
               position: "fixed",
@@ -831,7 +923,8 @@ const DisplayView = () => {
             <Grid
               sx={{
                 flexGrow: 1,
-                overflow: { xs: "visible", md: "visible", lg: "hidden" },
+                // Allow content in the left column to extend without being clipped
+                overflow: { xs: "visible", md: "visible", lg: "visible" },
                 minHeight: { md: 0 },
                 height: { xs: "auto", md: "auto", lg: "75vh" },
                 scrollSnapAlign: { xs: "start", md: "start", lg: "none" },
@@ -898,26 +991,20 @@ const DisplayView = () => {
                             "Phone not available"}
                         </Typography>
                       </Box>
-                      {(() => {
-                        const raw = (
-                          agentInfo?.MemberOfficePhone || ""
-                        ).toString();
-                        const digits = raw.replace(/\D+/g, "");
-                        if (!digits) return null;
-                        // Build a tel: URI. If North American 10 digits, prefix +1
-                        const telNumber =
-                          digits.length === 10
-                            ? `+1${digits}`
-                            : digits.startsWith("+")
-                            ? digits
-                            : `+${digits}`;
-                        const telUri = `tel:${telNumber}`;
-                        return (
-                          <Box ml={2}>
-                            <QRCodeCanvas value={telUri} size={80} />
-                          </Box>
-                        );
-                      })()}
+                      {listingUrl && (
+                        <Box
+                          ml={2}
+                          sx={{ display: "flex", justifyContent: "center" }}
+                        >
+                          <QRCodeCanvas
+                            value={listingUrl}
+                            size={120}
+                            style={{
+                              backgroundColor: theme.palette.background.primary,
+                            }}
+                          />
+                        </Box>
+                      )}
                     </Paper>
                     <Divider
                       sx={{ bgcolor: theme.palette.grey[200], height: 2 }}
@@ -1036,6 +1123,7 @@ const DisplayView = () => {
                         <Paper
                           sx={{
                             p: 2,
+                            mt: 10,
                             textAlign: "center",
                             position: "absolute",
                             top: 16,
@@ -1058,42 +1146,232 @@ const DisplayView = () => {
                         </Paper>
                       )}
                     </Box>
-                    {monthlyMortgage && (
+                    {(monthlyMortgage ||
+                      (Array.isArray(openHouseInfo) &&
+                        openHouseInfo.length > 0)) && (
                       <Paper
                         sx={{
                           p: 2,
                           width: "100%",
                           textAlign: "center",
                           boxShadow: 0,
-                          // backgroundColor: theme.palette.grey[100],
                         }}
                       >
-                        <Typography
-                          variant="h3"
-                          fontWeight="bold"
-                          sx={{ mb: 1 }}
-                        >
-                          Mortgage Estimate
-                        </Typography>
-                        <Typography
-                          variant="h4"
-                          fontWeight="bold"
-                          sx={{ color: theme.palette.secondary[200] }}
-                        >
-                          ${monthlyMortgage}/month
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            mt: 1,
-                            display: "block",
-                            color: theme.palette.text.secondary,
-                          }}
-                        >
-                          Based on 20% down, 4.50% interest,
-                          <br />
-                          30-year amortization
-                        </Typography>
+                        {Array.isArray(openHouseInfo) &&
+                        openHouseInfo.length > 0 &&
+                        !showMortgage
+                          ? (() => {
+                              const oh = openHouseInfo[0] || {};
+                              const startRaw =
+                                oh.StartDateTime ||
+                                oh.StartDate ||
+                                oh.StartTime ||
+                                oh.StartDateTimeLocal;
+                              const endRaw =
+                                oh.EndDateTime || oh.EndDate || oh.EndTime;
+                              const sd = startRaw ? new Date(startRaw) : null;
+                              const ed = endRaw ? new Date(endRaw) : null;
+                              const sameDay =
+                                sd &&
+                                ed &&
+                                sd.toDateString() === ed.toDateString();
+                              const fmtDate = new Intl.DateTimeFormat(
+                                undefined,
+                                {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                }
+                              );
+                              const fmtTime = new Intl.DateTimeFormat(
+                                undefined,
+                                { hour: "numeric", minute: "2-digit" }
+                              );
+                              return (
+                                <Box>
+                                  <Typography
+                                    variant="h4"
+                                    fontWeight="bold"
+                                    sx={{ mb: 1 }}
+                                  >
+                                    Open House
+                                  </Typography>
+                                  {sd ? (
+                                    <Stack spacing={1} alignItems="center">
+                                      <Stack
+                                        direction="row"
+                                        spacing={1.25}
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        flexWrap="wrap"
+                                      >
+                                        <Chip
+                                          icon={
+                                            <CalendarMonthIcon
+                                              sx={{ fontSize: 18 }}
+                                            />
+                                          }
+                                          label={fmtDate.format(sd)}
+                                          variant="filled"
+                                          sx={(t) => ({
+                                            bgcolor: t.palette.background.alt,
+                                            border: `1px solid ${alpha(
+                                              t.palette.text.primary,
+                                              0.12
+                                            )}`,
+                                            "& .MuiChip-label": {
+                                              fontWeight: 800,
+                                              px: 0.75,
+                                            },
+                                            "& .MuiChip-icon": {
+                                              color: t.palette.text.secondary,
+                                            },
+                                            borderRadius: 999,
+                                            height: 34,
+                                          })}
+                                        />
+                                        <Chip
+                                          icon={
+                                            <AccessTimeIcon
+                                              sx={{ fontSize: 18 }}
+                                            />
+                                          }
+                                          label={`${fmtTime.format(sd)}${
+                                            sameDay && ed
+                                              ? ` – ${fmtTime.format(ed)}`
+                                              : ""
+                                          }`}
+                                          variant="filled"
+                                          sx={(t) => ({
+                                            bgcolor: t.palette.background.alt,
+                                            border: `1px solid ${alpha(
+                                              t.palette.text.primary,
+                                              0.12
+                                            )}`,
+                                            "& .MuiChip-label": {
+                                              fontWeight: 900,
+                                              px: 0.75,
+                                            },
+                                            "& .MuiChip-icon": {
+                                              color: t.palette.text.secondary,
+                                            },
+                                            borderRadius: 999,
+                                            height: 34,
+                                          })}
+                                        />
+                                      </Stack>
+                                      {!sameDay && ed && (
+                                        <Stack
+                                          direction="row"
+                                          spacing={1}
+                                          alignItems="center"
+                                          justifyContent="center"
+                                          flexWrap="wrap"
+                                        >
+                                          <Typography
+                                            variant="subtitle1"
+                                            sx={{
+                                              fontWeight: 700,
+                                              opacity: 0.8,
+                                              mx: 0.5,
+                                            }}
+                                          >
+                                            to
+                                          </Typography>
+                                          <Chip
+                                            icon={
+                                              <CalendarMonthIcon
+                                                sx={{ fontSize: 18 }}
+                                              />
+                                            }
+                                            label={fmtDate.format(ed)}
+                                            variant="filled"
+                                            sx={(t) => ({
+                                              bgcolor: t.palette.background.alt,
+                                              border: `1px solid ${alpha(
+                                                t.palette.text.primary,
+                                                0.12
+                                              )}`,
+                                              "& .MuiChip-label": {
+                                                fontWeight: 800,
+                                                px: 0.75,
+                                              },
+                                              "& .MuiChip-icon": {
+                                                color: t.palette.text.secondary,
+                                              },
+                                              borderRadius: 999,
+                                              height: 34,
+                                            })}
+                                          />
+                                          <Chip
+                                            icon={
+                                              <AccessTimeIcon
+                                                sx={{ fontSize: 18 }}
+                                              />
+                                            }
+                                            label={fmtTime.format(ed)}
+                                            variant="filled"
+                                            sx={(t) => ({
+                                              bgcolor: t.palette.background.alt,
+                                              border: `1px solid ${alpha(
+                                                t.palette.text.primary,
+                                                0.12
+                                              )}`,
+                                              "& .MuiChip-label": {
+                                                fontWeight: 900,
+                                                px: 0.75,
+                                              },
+                                              "& .MuiChip-icon": {
+                                                color: t.palette.text.secondary,
+                                              },
+                                              borderRadius: 999,
+                                              height: 34,
+                                            })}
+                                          />
+                                        </Stack>
+                                      )}
+                                    </Stack>
+                                  ) : (
+                                    <Typography
+                                      variant="h6"
+                                      sx={{ fontWeight: 700 }}
+                                    >
+                                      Upcoming open house available
+                                    </Typography>
+                                  )}
+                                </Box>
+                              );
+                            })()
+                          : monthlyMortgage && (
+                              <Box>
+                                <Typography
+                                  variant="h3"
+                                  fontWeight="bold"
+                                  sx={{ mb: 1 }}
+                                >
+                                  Mortgage Estimate
+                                </Typography>
+                                <Typography
+                                  variant="h4"
+                                  fontWeight="bold"
+                                  sx={{ color: theme.palette.secondary[200] }}
+                                >
+                                  ${monthlyMortgage}/month
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    mt: 1,
+                                    display: "block",
+                                    color: theme.palette.text.secondary,
+                                  }}
+                                >
+                                  Based on 20% down, 4.50% interest,
+                                  <br />
+                                  30-year amortization
+                                </Typography>
+                              </Box>
+                            )}
                       </Paper>
                     )}
                   </Stack>
@@ -1111,64 +1389,69 @@ const DisplayView = () => {
                     zIndex: 99,
                   }}
                 >
-                  <Grid
-                    container
-                    spacing={0}
-                    sx={{
-                      height: { xs: "auto", md: "auto", lg: "100%" },
-                      display: "flex",
-                      flexWrap: "wrap",
-                      minHeight: { lg: 0 },
-                    }}
+                  <Box
+                    sx={{ position: "relative", width: "100%", height: "100%" }}
                   >
-                    {currentPhotoSet?.slice(0, 6).map((media, index) => (
-                      <Grid
-                        key={index}
-                        sx={{
-                          width: { xs: "100%", md: "100%", lg: "50%" },
-                          height: {
-                            xs: "auto",
-                            md: "auto",
-                            lg: "calc(100% / 3)",
-                          },
-                          p: 0.5,
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <Box
+                    <Grid
+                      container
+                      spacing={0}
+                      sx={{
+                        height: { xs: "auto", md: "auto", lg: "100%" },
+                        display: "flex",
+                        flexWrap: "wrap",
+                        minHeight: { lg: 0 },
+                      }}
+                    >
+                      {currentPhotoSet?.slice(0, 6).map((media, index) => (
+                        <Grid
+                          key={index}
                           sx={{
-                            width: "100%",
-                            height: { xs: "auto", md: "auto", lg: "100%" },
-                            overflow: {
-                              xs: "visible",
-                              md: "visible",
-                              lg: "hidden",
+                            width: { xs: "100%", md: "100%", lg: "50%" },
+                            height: {
+                              xs: "auto",
+                              md: "auto",
+                              lg: "calc(100% / 3)",
                             },
-                            borderRadius: 1,
+                            p: 0.5,
+                            boxSizing: "border-box",
                           }}
                         >
                           <Box
-                            component="img"
-                            src={
-                              isResolvableUrl(media.MediaURL)
-                                ? media.MediaURL
-                                : placeholderImage
-                            }
-                            alt={`Property ${index + 1}`}
                             sx={{
                               width: "100%",
                               height: { xs: "auto", md: "auto", lg: "100%" },
-                              objectFit: {
-                                xs: "contain",
-                                md: "contain",
-                                lg: "cover",
+                              overflow: {
+                                xs: "visible",
+                                md: "visible",
+                                lg: "hidden",
                               },
+                              borderRadius: 1,
                             }}
-                          />
-                        </Box>
-                      </Grid>
-                    ))}
-                  </Grid>
+                          >
+                            <Box
+                              component="img"
+                              src={
+                                isResolvableUrl(media.MediaURL)
+                                  ? media.MediaURL
+                                  : placeholderImage
+                              }
+                              alt={`Property ${index + 1}`}
+                              sx={{
+                                width: "100%",
+                                height: { xs: "auto", md: "auto", lg: "100%" },
+                                objectFit: {
+                                  xs: "contain",
+                                  md: "contain",
+                                  lg: "cover",
+                                },
+                              }}
+                            />
+                          </Box>
+                        </Grid>
+                      ))}
+                    </Grid>
+                    {/* Open House overlay removed; cycling handled in Mortgage panel */}
+                  </Box>
                 </Grid>
               </Grid>
             </Grid>
@@ -1259,7 +1542,9 @@ const DisplayView = () => {
               width: isFullscreen ? 35 : 56,
               height: isFullscreen ? 35 : 56,
               borderRadius: "50%",
-              backgroundColor: isFullscreen ? "#fff" : theme.palette.primary[300],
+              backgroundColor: isFullscreen
+                ? "#fff"
+                : theme.palette.primary[300],
               color: isFullscreen ? "#fff" : theme.palette.secondary[200],
               display: "flex",
               justifyContent: "center",
