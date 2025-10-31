@@ -103,14 +103,7 @@ function shuffleByYear(listings) {
   return out;
 }
 
-// Map route city to ListOfficeKey groups
-const OFFICE_KEYS_BY_CITY = {
-  Surrey: ["61022", "290689"],
-  Langley: ["299834"],
-  Abbotsford: ["278419"],
-};
-
-// Apply filtering based on the route city (office-based) or
+// Apply filtering based on the route city (by property City string) or
 // fall back to settings-selected property cities. Always ensure we
 // return at least one listing (fallback to unfiltered if empty).
 function filterByRouteOrSettingsWithFallback(
@@ -118,14 +111,15 @@ function filterByRouteOrSettingsWithFallback(
   selectedCity,
   selectedCitiesFromSettings
 ) {
-  // Route city maps to office keys
-  const officeKeys = OFFICE_KEYS_BY_CITY[selectedCity];
-  if (officeKeys) {
+  // If a city is selected in the route, filter strictly by that City value
+  const routeCity = (selectedCity || "").trim();
+  if (routeCity && routeCity.toLowerCase() !== "all") {
     const filtered = (allListings || []).filter((l) =>
-      officeKeys.includes(String(l.ListOfficeKey || ""))
+      String(l.City || "")
+        .trim()
+        .toLowerCase() === routeCity.toLowerCase()
     );
-    if (filtered.length > 0) return filtered;
-    return allListings;
+    return filtered; // strict filter: do not fallback to all
   }
 
   // Otherwise respect settings-selected property cities
